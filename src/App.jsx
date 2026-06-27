@@ -1058,7 +1058,7 @@ function ReportTab({ barId, role }) {
                         <span style={{ fontFamily: "monospace", fontWeight: 700, color: amt > 0 ? ERR : MUTED }}>{fmt(amt)}</span>
                       </div>
                       <div style={{ height: 6, background: BORDER, borderRadius: 3 }}>
-                        <div style={{ height: "100%", background: ERR, borderRadius: 3, width: `${(amt / max) * 100}%` }} />
+                        <div style={{ height: "100%", background: ERR, borderRadius: 3, width: ((amt / max) * 100) + "%" }} />
                       </div>
                     </div>
                   );
