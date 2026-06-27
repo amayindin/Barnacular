@@ -24,19 +24,19 @@ const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("en-NG", { wee
 function genBarCode(name) {
   const prefix = name.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "BAR";
   const num = Math.floor(1000 + Math.random() * 9000);
-  return `${prefix}-${num}`;
+  return prefix + "-" + num;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const C = {
-  card: { background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "14px 15px", marginBottom: 12, boxShadow: SHADOW },
-  inp: { width: "100%", background: INP, border: `1px solid ${BORDER}`, borderRadius: 10, color: TXT, padding: "11px 13px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" },
+  card: { background: WHITE, border: "1px solid " + BORDER, borderRadius: 16, padding: "14px 15px", marginBottom: 12, boxShadow: SHADOW },
+  inp: { width: "100%", background: INP, border: "1px solid " + BORDER, borderRadius: 10, color: TXT, padding: "11px 13px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" },
   lbl: { fontSize: 11, fontWeight: 600, color: MUTED, marginBottom: 5, display: "block" },
   btn: (v = "primary") => ({
     width: "100%", padding: "13px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
     background: v === "primary" ? TEAL : v === "amber" ? AMBER : v === "ok" ? OK : v === "err" ? ERR : v === "ghost" ? "transparent" : v === "google" ? WHITE : INP,
     color: v === "ghost" ? MUTED : v === "google" ? TXT : WHITE,
-    border: v === "ghost" ? `1px solid ${BORDER}` : v === "google" ? `1px solid ${BORDER}` : "none",
+    border: v === "ghost" ? "1px solid " + BORDER : v === "google" ? "1px solid " + BORDER : "none",
     boxShadow: v === "google" ? SHADOW : "none",
   }),
   row: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
@@ -47,9 +47,9 @@ const C = {
   div: { height: 1, background: BORDER, margin: "10px 0" },
   tag: c => ({ display: "inline-block", background: c + "18", color: c, borderRadius: 20, fontSize: 10, fontWeight: 700, padding: "3px 9px" }),
   empty: { textAlign: "center", color: MUTED, padding: "40px 14px", fontSize: 13 },
-  tw: { overflowX: "auto", borderRadius: 12, border: `1px solid ${BORDER}`, background: WHITE, marginBottom: 14, boxShadow: SHADOW },
-  th: c => ({ padding: "9px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: c || MUTED, background: "#F5F7F9", borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap", textAlign: "left" }),
-  td: c => ({ padding: "10px 11px", fontSize: 13, color: c || TXT, borderBottom: `1px solid ${BORDER}`, whiteSpace: "nowrap", verticalAlign: "middle" }),
+  tw: { overflowX: "auto", borderRadius: 12, border: "1px solid " + BORDER, background: WHITE, marginBottom: 14, boxShadow: SHADOW },
+  th: c => ({ padding: "9px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: c || MUTED, background: "#F5F7F9", borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", textAlign: "left" }),
+  td: c => ({ padding: "10px 11px", fontSize: 13, color: c || TXT, borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", verticalAlign: "middle" }),
 };
 
 // ── Loading ───────────────────────────────────────────────────────────────────
@@ -57,8 +57,8 @@ function LoadingScreen() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: WHITE, fontFamily: "Georgia,serif" }}>
       <div style={{ fontSize: 36, fontWeight: 400, color: TXT, marginBottom: 20 }}>Barnakular</div>
-      <div style={{ width: 32, height: 32, border: `3px solid ${BORDER}`, borderTopColor: TEAL, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{ width: 32, height: 32, border: "3px solid " + BORDER, borderTopColor: TEAL, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
     </div>
   );
 }
@@ -121,8 +121,8 @@ function AuthScreen({ onAuth }) {
         <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{mode === "login" ? "Welcome back" : "Create your account"}</div>
       </div>
 
-      {msg && <div style={{ background: OK + "15", border: `1px solid ${OK}33`, borderRadius: 10, color: OK, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%", textAlign: "center" }}>{msg}</div>}
-      {err && <div style={{ background: ERR + "12", border: `1px solid ${ERR}33`, borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%", textAlign: "center" }}>{err}</div>}
+      {msg && <div style={{ background: OK + "15", border: "1px solid " + OK + "33", borderRadius: 10, color: OK, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%", textAlign: "center" }}>{msg}</div>}
+      {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%", textAlign: "center" }}>{err}</div>}
 
       <button onClick={handleGoogle} disabled={loading} style={{ ...C.btn("google"), marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 14 }}>
         <span style={{ fontSize: 18 }}>G</span> Continue with Google
@@ -230,7 +230,7 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ fontSize: 13, color: MUTED }}>What would you like to do?</div>
       </div>
       <button onClick={() => setChoice("create")}
-        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", marginBottom: 12, background: WHITE, border: `1.5px solid ${TEAL}`, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
+        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", marginBottom: 12, background: WHITE, border: "1.5px solid " + TEAL, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
         <div style={{ fontSize: 28, width: 48, height: 48, borderRadius: 12, background: TEAL + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>🏪</div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: TXT }}>Create a Bar</div>
@@ -239,7 +239,7 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ marginLeft: "auto", color: MUTED, fontSize: 20 }}>›</div>
       </button>
       <button onClick={() => setChoice("join")}
-        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", background: WHITE, border: `1.5px solid ${BORDER}`, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
+        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", background: WHITE, border: "1.5px solid " + BORDER, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
         <div style={{ fontSize: 28, width: 48, height: 48, borderRadius: 12, background: BLUE + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>🔗</div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: TXT }}>Join a Bar</div>
@@ -256,7 +256,7 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: TXT }}>{choice === "create" ? "Create Your Bar" : "Join a Bar"}</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>{choice === "create" ? "You will be assigned as Supervisor" : "Send a request to join"}</div>
       </div>
-      {err && <div style={{ background: ERR + "12", border: `1px solid ${ERR}33`, borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
+      {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
       <div style={{ width: "100%", marginBottom: 12 }}>
         <label style={C.lbl}>Your Display Name</label>
         <input style={C.inp} placeholder="e.g. Chukwuemeka" value={displayName} onChange={e => setDisplayName(e.target.value)} />
@@ -319,7 +319,7 @@ function JoinViaInvite({ user, token, onDone }) {
         <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: TXT, marginTop: 8 }}>You've been invited</div>
         {invite && <div style={{ fontSize: 14, color: MUTED, marginTop: 8 }}>Join <strong style={{ color: TXT }}>{invite.bars?.name}</strong> as <span style={C.tag(ROLE_COLOR[invite.role] || BLUE)}>{ROLE_LABEL[invite.role] || invite.role}</span></div>}
       </div>
-      {err && <div style={{ background: ERR + "12", border: `1px solid ${ERR}33`, borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
+      {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
       {invite && (
         <>
           <div style={{ width: "100%", marginBottom: 24 }}>
@@ -327,7 +327,7 @@ function JoinViaInvite({ user, token, onDone }) {
             <input style={C.inp} placeholder="e.g. Taiwo" value={displayName} onChange={e => setDisplayName(e.target.value)} onKeyDown={e => e.key === "Enter" && join()} />
           </div>
           <button onClick={join} disabled={joining} style={{ ...C.btn("primary"), opacity: joining ? 0.6 : 1 }}>
-            {joining ? "Joining..." : `Join ${invite.bars?.name} →`}
+            {joining ? "Joining..." : "Join " + (invite.bars?.name || "") + " →"}
           </button>
         </>
       )}
@@ -339,7 +339,7 @@ function JoinViaInvite({ user, token, onDone }) {
 function PLCard({ label, daysLogged, totalRev, totalCOGS, totalExp }) {
   const gross = totalRev - totalCOGS, net = gross - totalExp;
   return (
-    <div style={{ ...C.card, borderLeft: `4px solid ${TEAL}` }}>
+    <div style={{ ...C.card, borderLeft: "4px solid " + TEAL }}>
       <div style={{ fontWeight: 800, fontSize: 15, color: TEAL, marginBottom: 12 }}>{label}</div>
       {daysLogged !== undefined && <div style={C.row}><span style={C.slbl}>Days Logged</span><span style={C.sval()}>{daysLogged}</span></div>}
       <div style={C.row}><span style={C.slbl}>Revenue</span><span style={C.sval(TEAL)}>{fmt(totalRev)}</span></div>
@@ -380,7 +380,7 @@ function SalesTable({ rows, totalRev, totalCOGS, role }) {
             <td style={{ ...C.td(), fontFamily: "monospace" }}>{d.lastClose ?? "—"}</td>
           </tr>
         ))}</tbody>
-        <tfoot><tr style={{ background: BG, borderTop: `1px solid ${BORDER}` }}>
+        <tfoot><tr style={{ background: BG, borderTop: "1px solid " + BORDER }}>
           <td style={{ ...C.td(), fontSize: 11, color: MUTED, fontWeight: 700 }}>Totals</td>
           <td style={{ ...C.td(), fontFamily: "monospace", fontWeight: 700, color: AMBER }}>{rows.reduce((s, d) => s + d.sold, 0)}</td>
           {show && <td style={{ ...C.td(), fontWeight: 700, color: TEAL }}>{fmt(totalRev)}</td>}
@@ -457,7 +457,7 @@ function StockTab({ barId, role, userId, displayName }) {
 
   useEffect(() => {
     loadDrinks();
-    const sub = supabase.channel("drinks-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "drinks", filter: `bar_id=eq.${barId}` }, loadDrinks).subscribe();
+    const sub = supabase.channel("drinks-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "drinks", filter: "bar_id=eq." + barId }, loadDrinks).subscribe();
     return () => supabase.removeChannel(sub);
   }, [barId]);
 
@@ -473,7 +473,7 @@ function StockTab({ barId, role, userId, displayName }) {
     const d = drinks.find(x => x.id === id);
     if (isNaN(s) || s <= d.buy_price) { setErr("Sell price must exceed buy price."); return; }
     await supabase.from("drinks").update({ sell_price: s, price_pending: false }).eq("id", id);
-    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: `Set sell price of ${d.name}`, detail: fmt(s) });
+    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Set sell price of " + d.name, detail: fmt(s) });
     setPriceId(null); setErr("");
   }
 
@@ -483,7 +483,7 @@ function StockTab({ barId, role, userId, displayName }) {
     const d = drinks.find(x => x.id === restockId);
     await supabase.from("restocks").insert({ bar_id: barId, drink_id: restockId, quantity: q, restock_date: today() });
     await supabase.from("drinks").update({ quantity: d.quantity + q }).eq("id", restockId);
-    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: `Restocked ${d.name}`, detail: `+${q} units` });
+    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+"+q+" units" });
     setRestockId(null); setRestockQty("");
   }
 
@@ -515,13 +515,13 @@ function StockTab({ barId, role, userId, displayName }) {
       </div>
 
       {isReadOnly && (
-        <div style={{ background: BLUE + "12", border: `1px solid ${BLUE}33`, borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: BLUE, fontWeight: 500 }}>
+        <div style={{ background: BLUE + "12", border: "1px solid " + BLUE + "33", borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: BLUE, fontWeight: 500 }}>
           👁 You are viewing this bar as a Viewer. You cannot make any changes.
         </div>
       )}
 
       {lowItems.length > 0 && (
-        <div style={{ background: "#FFF5F5", border: `1px solid ${ERR}33`, borderRadius: 14, padding: "13px 15px", marginBottom: 14 }}>
+        <div style={{ background: "#FFF5F5", border: "1px solid " + ERR + "33", borderRadius: 14, padding: "13px 15px", marginBottom: 14 }}>
           <div style={{ fontWeight: 700, color: ERR, fontSize: 13, marginBottom: 8 }}>⚠ Low Stock Alert</div>
           {lowItems.map(d => (
             <div key={d.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
@@ -540,7 +540,7 @@ function StockTab({ barId, role, userId, displayName }) {
           {pending.map(d => (
             <div key={d.id}>
               {priceId === d.id ? (
-                <div style={{ ...C.card, border: `1.5px solid ${AMBER}`, marginBottom: 8 }}>
+                <div style={{ ...C.card, border: "1.5px solid " + AMBER, marginBottom: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{d.name}</div>
                   <div style={{ fontSize: 12, color: MUTED, marginBottom: 13 }}>Buy price: {fmt(d.buy_price)}</div>
                   <label style={C.lbl}>Sell Price (₦)</label>
@@ -553,7 +553,7 @@ function StockTab({ barId, role, userId, displayName }) {
                 </div>
               ) : (
                 <button onClick={() => { setPriceId(d.id); setPriceData({}); setErr(""); }}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "14px 16px", marginBottom: 8, background: WHITE, border: `1.5px solid ${AMBER}55`, borderRadius: 14, cursor: "pointer", boxShadow: SHADOW }}>
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "14px 16px", marginBottom: 8, background: WHITE, border: "1.5px solid " + AMBER + "55", borderRadius: 14, cursor: "pointer", boxShadow: SHADOW }}>
                   <div style={{ textAlign: "left" }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: TXT }}>{d.name}</div>
                     <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Buy: {fmt(d.buy_price)} · Tap to set sell price</div>
@@ -567,12 +567,12 @@ function StockTab({ barId, role, userId, displayName }) {
       )}
 
       {canEdit && pending.length > 0 && (
-        <div style={{ background: "#FFFBF0", border: `1px solid ${AMBER}33`, borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER, fontWeight: 500 }}>
+        <div style={{ background: "#FFFBF0", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER, fontWeight: 500 }}>
           ⏳ {pending.length} drink{pending.length !== 1 ? "s" : ""} awaiting sell price from Supervisor.
         </div>
       )}
 
-      {err && !priceId && <div style={{ background: "#FFF5F5", border: `1px solid ${ERR}44`, borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 12 }}>{err}</div>}
+      {err && !priceId && <div style={{ background: "#FFF5F5", border: "1px solid " + ERR + "44", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 12 }}>{err}</div>}
 
       <div style={C.sec}>Stock Register <div style={C.line} /></div>
 
@@ -630,7 +630,7 @@ function StockTab({ barId, role, userId, displayName }) {
             )}
           </tbody>
           {drinks.length > 0 && (
-            <tfoot><tr style={{ background: BG, borderTop: `1px solid ${BORDER}` }}>
+            <tfoot><tr style={{ background: BG, borderTop: "1px solid " + BORDER }}>
               <td style={{ ...C.td(), fontWeight: 700, fontSize: 11, color: MUTED }}>{drinks.length} drinks</td>
               <td style={{ ...C.td(), fontFamily: "monospace", fontWeight: 700 }}>{drinks.reduce((s, d) => s + d.quantity, 0)}</td>
               <td colSpan={3} style={C.td()}></td>
@@ -687,7 +687,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
       setDrinks(drinksData || []); setLogs(logsData || []); setLoading(false);
     }
     load();
-    const sub = supabase.channel("logs-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "stock_logs", filter: `bar_id=eq.${barId}` }, load).subscribe();
+    const sub = supabase.channel("logs-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "stock_logs", filter: "bar_id=eq." + barId }, load).subscribe();
     return () => supabase.removeChannel(sub);
   }, [barId]);
 
@@ -715,7 +715,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
         if (existingClose) await supabase.from("stock_logs").update({ closing_qty: parseFloat(val), recorded_by: recorderName }).eq("id", existingClose.id);
         else await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: date, closing_qty: parseFloat(val), log_type: "closing", recorded_by: recorderName });
       }
-      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Saved closing stock", detail: `for ${date}` });
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Saved closing stock", detail: "for " + date });
       setCloseEnt({}); setShowCash(true);
     } finally { setSaving(false); }
   }
@@ -745,7 +745,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
           </div>
         )}
       </div>
-      {isLocked && <div style={{ background: "#FFF5F5", border: `1px solid ${ERR}33`, borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: ERR }}>🔒 Past records are locked.</div>}
+      {isLocked && <div style={{ background: "#FFF5F5", border: "1px solid " + ERR + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: ERR }}>🔒 Past records are locked.</div>}
       {drinks.length === 0 ? <div style={C.empty}>No drinks in stock register.</div> : (
         <>
           <div style={C.tw}>
@@ -788,7 +788,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
             </button>
           )}
           {showCash && (
-            <div style={{ ...C.card, border: `1.5px solid ${OK}`, marginBottom: 14 }}>
+            <div style={{ ...C.card, border: "1.5px solid " + OK, marginBottom: 14 }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: OK, marginBottom: 12 }}>💰 Record Cash Collected</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>How much cash was collected today ({date})?</div>
               <label style={C.lbl}>Cash Amount (₦)</label>
@@ -816,7 +816,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
               <span style={C.tag(closingLogs.length > 0 ? OK : MUTED)}>{closingLogs.length > 0 ? "✓ Complete" : "Incomplete"}</span>
             </div>
             <button onClick={() => setExpandedDate(expandedDate === d ? null : d)}
-              style={{ marginTop: 10, width: "100%", background: "none", border: `1px solid ${BORDER}`, borderRadius: 8, color: MUTED, fontSize: 11, padding: "6px", cursor: "pointer" }}>
+              style={{ marginTop: 10, width: "100%", background: "none", border: "1px solid " + BORDER, borderRadius: 8, color: MUTED, fontSize: 11, padding: "6px", cursor: "pointer" }}>
               {expandedDate === d ? "▲ Hide" : "▼ View Breakdown"}
             </button>
             {expandedDate === d && (
@@ -872,14 +872,14 @@ function ExpensesTab({ barId, role, userId }) {
 
   useEffect(() => {
     load();
-    const sub = supabase.channel("expenses-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "expenses", filter: `bar_id=eq.${barId}` }, load).subscribe();
+    const sub = supabase.channel("expenses-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "expenses", filter: "bar_id=eq." + barId }, load).subscribe();
     return () => supabase.removeChannel(sub);
   }, [barId]);
 
   async function add() {
     if (!desc.trim() || !amount) { setErr("Fill in all fields."); return; }
     await supabase.from("expenses").insert({ bar_id: barId, category, description: desc.trim(), amount: parseFloat(amount), expense_date: date, created_by: userId });
-    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added expense", detail: `${category}: ${desc}` });
+    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added expense", detail: category + ": " + desc });
     setDesc(""); setAmount(""); setErr("");
   }
 
@@ -889,8 +889,8 @@ function ExpensesTab({ barId, role, userId }) {
   return (
     <div>
       <div style={C.sec}>Expenses <div style={C.line} /></div>
-      {role === "supervisor" && <div style={{ background: "#FFFBF0", border: `1px solid ${AMBER}33`, borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: AMBER, fontWeight: 500 }}>👁 Viewing all expense records. Only Managers can add expenses.</div>}
-      {role === "viewer" && <div style={{ background: BLUE + "12", border: `1px solid ${BLUE}33`, borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: BLUE, fontWeight: 500 }}>👁 You are viewing expense records as a Viewer.</div>}
+      {role === "supervisor" && <div style={{ background: "#FFFBF0", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: AMBER, fontWeight: 500 }}>👁 Viewing all expense records. Only Managers can add expenses.</div>}
+      {role === "viewer" && <div style={{ background: BLUE + "12", border: "1px solid " + BLUE + "33", borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: BLUE, fontWeight: 500 }}>👁 You are viewing expense records as a Viewer.</div>}
       {canAdd && (
         <div style={C.card}>
           <div style={{ marginBottom: 11 }}><label style={C.lbl}>Date</label><input style={C.inp} type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
@@ -899,7 +899,7 @@ function ExpensesTab({ barId, role, userId }) {
             <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
               {EXPENSE_CATS.map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)}
-                  style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${category === cat ? TEAL : BORDER}`, background: category === cat ? TEAL : WHITE, color: category === cat ? WHITE : MUTED, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                  style={{ padding: "8px 14px", borderRadius: 20, border: "1px solid " + (category === cat ? TEAL : BORDER), background: category === cat ? TEAL : WHITE, color: category === cat ? WHITE : MUTED, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                   {cat}
                 </button>
               ))}
@@ -921,7 +921,7 @@ function ExpensesTab({ barId, role, userId }) {
               </div>
             </div>
           ))}
-          <div style={{ ...C.card, borderLeft: `4px solid ${ERR}` }}>
+          <div style={{ ...C.card, borderLeft: "4px solid " + ERR }}>
             <div style={C.row}><span style={{ fontWeight: 700 }}>Total Expenses</span><span style={C.sval(ERR)}>{fmt(total)}</span></div>
           </div>
         </>
@@ -1008,17 +1008,17 @@ function ReportTab({ barId, role }) {
           {!isManager && (
             <>
               <PLCard
-                label={view === "daily" ? `Day Summary — ${fmtDate(date)}` : new Date(month + "-01").toLocaleString("en-NG", { month: "long", year: "numeric" })}
+                label={view === "daily" ? "Day Summary — " + fmtDate(date) : new Date(month + "-01").toLocaleString("en-NG", { month: "long", year: "numeric" })}
                 daysLogged={data.daysLogged}
                 totalRev={data.totalRev} totalCOGS={data.totalCOGS} totalExp={data.totalExp}
               />
               {data.dayCash && (
-                <div style={{ ...C.card, borderLeft: `4px solid ${OK}` }}>
+                <div style={{ ...C.card, borderLeft: "4px solid " + OK }}>
                   <div style={C.row}><span style={{ fontWeight: 700 }}>Cash Collected</span><span style={C.sval(OK)}>{fmt(data.dayCash.amount)}</span></div>
                 </div>
               )}
               {view === "monthly" && (
-                <div style={{ ...C.card, borderLeft: `4px solid ${OK}` }}>
+                <div style={{ ...C.card, borderLeft: "4px solid " + OK }}>
                   <div style={C.row}><span style={{ fontWeight: 700 }}>Total Cash Collected</span><span style={C.sval(OK)}>{fmt(data.totalCash)}</span></div>
                 </div>
               )}
@@ -1027,7 +1027,7 @@ function ReportTab({ barId, role }) {
 
           {isManager ? (
             <>
-              <div style={{ ...C.card, borderLeft: `4px solid ${AMBER}` }}>
+              <div style={{ ...C.card, borderLeft: "4px solid " + AMBER }}>
                 <div style={{ fontWeight: 700, color: AMBER, marginBottom: 10 }}>Operational Summary</div>
                 <div style={C.row}><span style={C.slbl}>Units Sold</span><span style={C.sval(AMBER)}>{data.drinkStats.reduce((s, d) => s + d.sold, 0)}</span></div>
                 <div style={C.row}><span style={C.slbl}>Drinks with Sales</span><span style={C.sval(OK)}>{data.drinkStats.filter(d => d.sold > 0).length}</span></div>
@@ -1052,8 +1052,8 @@ function ReportTab({ barId, role }) {
                   const max = Math.max(...Object.values(data.byCategory), 1);
                   const isTop = amt === max && amt > 0;
                   return (
-
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
+                    <div key={cat} style={{ marginBottom: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13 }}>
                         <span style={{ fontWeight: 600 }}>{isTop ? "🔴 " : ""}{cat}</span>
                         <span style={{ fontFamily: "monospace", fontWeight: 700, color: amt > 0 ? ERR : MUTED }}>{fmt(amt)}</span>
                       </div>
@@ -1141,8 +1141,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   useEffect(() => {
     loadData();
     const sub = supabase.channel("settings-" + barId)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `bar_id=eq.${barId}` }, loadData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "join_requests", filter: `bar_id=eq.${barId}` }, loadData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: "bar_id=eq." + barId }, loadData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "join_requests", filter: "bar_id=eq." + barId }, loadData)
       .subscribe();
     return () => supabase.removeChannel(sub);
   }, [barId]);
