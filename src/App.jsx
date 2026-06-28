@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://uqqztjanagmoccfpcyxa.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxcXp0amFuYWdtb2NjZnBjeXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTI5MzIsImV4cCI6MjA5Nzg4ODkzMn0.agQ-wupnb6gIe6WxiLmwQu2Wu4F6R5rA8Xs8HuMnNqw";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://uqqztjanagmoccfpcyxa.supabase.co";
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxcXp0amFuYWdtb2NjZnBjeXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTI5MzIsImV4cCI6MjA5Nzg4ODkzMn0.agQ-wupnb6gIe6WxiLmwQu2Wu4F6R5rA8Xs8HuMnNqw";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -20,10 +20,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 const mkey = d => (d || today()).slice(0, 7);
 const fmtTs = t => new Date(t).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const sanitise = (text, maxLen = 100) => (text || "").trim().slice(0, maxLen).replace(/[<>]/g, "");
 
 function genBarCode(name) {
   const prefix = name.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "BAR";
-  const num = Math.floor(1000 + Math.random() * 9000);
+  const num = Math.floor(100000 + Math.random() * 900000);
   return prefix + "-" + num;
 }
 
@@ -181,7 +182,7 @@ function OnboardingChoice({ user, onDone }) {
     setLoading(true); setErr("");
     try {
       const code = genBarCode(barName);
-      const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: barName.trim(), owner_id: user.id, bar_code: code }).select().single();
+      const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: sanitise(barName, 60), owner_id: user.id, bar_code: code }).select().single();
       if (barErr) throw barErr;
       const { error: profErr } = await supabase.from("profiles").upsert({ id: user.id, bar_id: bar.id, display_name: displayName.trim(), role: "supervisor" });
       if (profErr) throw profErr;
@@ -293,7 +294,7 @@ function JoinViaInvite({ user, token, onDone }) {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase.from("invites").select("*, bars(name)").eq("token", token).eq("used", false).single();
+      const { data, error } = await supabase.from("invites").select("*, bars(name)").eq("token", token).eq("used", false).gte("expires_at", new Date().toISOString()).single();
       if (error || !data) setErr("This invite link is invalid or has already been used.");
       else setInvite(data);
       setLoading(false);
@@ -466,7 +467,7 @@ function StockTab({ barId, role, userId, displayName }) {
   async function addDrink() {
     if (!newRow.name.trim()) { setErr("Drink name required."); return; }
     const addedBySuper = role === "supervisor";
-    await supabase.from("drinks").insert({ bar_id: barId, name: newRow.name.trim(), buy_price: parseFloat(newRow.buy_price) || 0, sell_price: addedBySuper ? (parseFloat(newRow.sell_price) || 0) : 0, quantity: parseInt(newRow.quantity) || 0, min_quantity: parseInt(newRow.min_quantity) || 3, price_pending: addedBySuper ? (!newRow.sell_price || parseFloat(newRow.sell_price) <= 0) : true });
+    await supabase.from("drinks").insert({ bar_id: barId, name: sanitise(newRow.name, 60), buy_price: parseFloat(newRow.buy_price) || 0, sell_price: addedBySuper ? (parseFloat(newRow.sell_price) || 0) : 0, quantity: parseInt(newRow.quantity) || 0, min_quantity: parseInt(newRow.min_quantity) || 3, price_pending: addedBySuper ? (!newRow.sell_price || parseFloat(newRow.sell_price) <= 0) : true });
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added drink", detail: newRow.name.trim() });
     setNewRow({ name: "", buy_price: "", quantity: "", min_quantity: "" }); setErr("");
   }
@@ -885,7 +886,7 @@ function ExpensesTab({ barId, role, userId }) {
 
   async function add() {
     if (!desc.trim() || !amount) { setErr("Fill in all fields."); return; }
-    await supabase.from("expenses").insert({ bar_id: barId, category, description: desc.trim(), amount: parseFloat(amount), expense_date: date, created_by: userId });
+    await supabase.from("expenses").insert({ bar_id: barId, category, description: sanitise(desc, 200), amount: parseFloat(amount), expense_date: date, created_by: userId });
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added expense", detail: category + ": " + desc });
     setDesc(""); setAmount(""); setErr("");
   }
@@ -1178,7 +1179,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
   async function approveRequest(req) {
     const viewers = members.filter(m => m.role === "viewer");
-    if (viewers.length >= 5) { alert("Maximum 5 viewers already reached."); return; }
+    if (viewers.length >= 5) { alert("Maximum 5 viewers already reached. Remove a viewer first."); return; }
+    if (!req.user_id || !req.bar_id) { alert("Invalid request."); return; }
     await supabase.from("profiles").upsert({ id: req.user_id, bar_id: barId, display_name: req.display_name, role: "viewer" });
     await supabase.from("join_requests").update({ status: "approved" }).eq("id", req.id);
     loadData();
@@ -1196,7 +1198,10 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   }
 
   async function assignRole(memberId, newRole) {
+    if (!["supervisor", "manager", "viewer"].includes(newRole)) { alert("Invalid role."); return; }
+    if (memberId === userId && newRole !== "supervisor") { alert("You cannot demote yourself."); return; }
     const member = members.find(m => m.id === memberId);
+    if (!member) { alert("Member not found."); return; }
     if (!window.confirm("Assign " + member?.display_name + " as " + (ROLE_LABEL[newRole] || newRole) + "?")) return;
     if (newRole === "supervisor") {
       const expiresAt = new Date(Date.now() + 24 * 3600000).toISOString();
@@ -1387,7 +1392,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       const code = genBarCode(barName);
       const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: barName.trim(), owner_id: user.id, bar_code: code }).select().single();
       if (barErr) throw barErr;
-      const name = displayName.trim() || user.user_metadata?.full_name || user.email;
+      const name = sanitise(displayName || user.user_metadata?.full_name || user.email, 50);
       await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: name, role: "supervisor", is_owner: true });
       setBarName(""); setDisplayName(""); setShowCreate(false);
       loadBars();
