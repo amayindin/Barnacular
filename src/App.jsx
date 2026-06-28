@@ -106,6 +106,7 @@ function AuthScreen({ onAuth }) {
   if (mode === "landing") return (
     <div style={wrap}>
       <div style={{ marginBottom: 48, textAlign: "center" }}>
+        <img src="/logo.png" alt="Barnakular" style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 8 }} />
         <div style={{ fontFamily: "Georgia,serif", fontSize: 46, fontWeight: 400, color: TXT, letterSpacing: -1 }}>Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>Bar Management System</div>
       </div>
@@ -117,6 +118,7 @@ function AuthScreen({ onAuth }) {
   return (
     <div style={wrap}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
+        <img src="/logo.png" alt="Barnakular" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 8 }} />
         <div style={{ fontFamily: "Georgia,serif", fontSize: 36, fontWeight: 400, color: TXT }}>Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{mode === "login" ? "Welcome back" : "Create your account"}</div>
       </div>
@@ -435,7 +437,7 @@ function calcSales(drinks, logs) {
 function StockTab({ barId, role, userId, displayName }) {
   const [drinks, setDrinks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newRow, setNewRow] = useState({ name: "", buy_price: "", quantity: "", min_quantity: "" });
+  const [newRow, setNewRow] = useState({ name: "", buy_price: "", sell_price: "", quantity: "", min_quantity: "" });
   const [priceId, setPriceId] = useState(null);
   const [priceData, setPriceData] = useState({});
   const [restockId, setRestockId] = useState(null);
@@ -445,7 +447,7 @@ function StockTab({ barId, role, userId, displayName }) {
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
-  const canEdit = role === "manager";
+  const canEdit = role === "manager" || role === "supervisor";
   const canPrice = role === "supervisor";
   const isReadOnly = role === "viewer";
   const showMoney = role !== "manager";
@@ -463,7 +465,8 @@ function StockTab({ barId, role, userId, displayName }) {
 
   async function addDrink() {
     if (!newRow.name.trim()) { setErr("Drink name required."); return; }
-    await supabase.from("drinks").insert({ bar_id: barId, name: newRow.name.trim(), buy_price: parseFloat(newRow.buy_price) || 0, quantity: parseInt(newRow.quantity) || 0, min_quantity: parseInt(newRow.min_quantity) || 3, price_pending: true });
+    const addedBySuper = role === "supervisor";
+    await supabase.from("drinks").insert({ bar_id: barId, name: newRow.name.trim(), buy_price: parseFloat(newRow.buy_price) || 0, sell_price: addedBySuper ? (parseFloat(newRow.sell_price) || 0) : 0, quantity: parseInt(newRow.quantity) || 0, min_quantity: parseInt(newRow.min_quantity) || 3, price_pending: addedBySuper ? (!newRow.sell_price || parseFloat(newRow.sell_price) <= 0) : true });
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added drink", detail: newRow.name.trim() });
     setNewRow({ name: "", buy_price: "", quantity: "", min_quantity: "" }); setErr("");
   }
@@ -623,7 +626,11 @@ function StockTab({ barId, role, userId, displayName }) {
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 70 }} type="number" placeholder="Qty" value={newRow.quantity} onChange={e => setNewRow(p => ({ ...p, quantity: e.target.value }))} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 54 }} type="number" placeholder="Min" value={newRow.min_quantity} onChange={e => setNewRow(p => ({ ...p, min_quantity: e.target.value }))} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 90 }} type="number" placeholder="Buy ₦" value={newRow.buy_price} onChange={e => setNewRow(p => ({ ...p, buy_price: e.target.value }))} /></td>
-                <td style={{ padding: "8px", color: MUTED, fontSize: 11 }}>Supervisor sets</td>
+                {role === "supervisor" ? (
+                  <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 90 }} type="number" placeholder="Sell ₦" value={newRow.sell_price} onChange={e => setNewRow(p => ({ ...p, sell_price: e.target.value }))} /></td>
+                ) : (
+                  <td style={{ padding: "8px", color: MUTED, fontSize: 11 }}>Supervisor sets</td>
+                )}
                 <td colSpan={2} style={C.td()}></td>
                 <td style={{ padding: "8px" }}><button onClick={addDrink} style={{ background: TEAL, color: WHITE, border: "none", borderRadius: 8, padding: "7px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>+ Add</button></td>
               </tr>
@@ -1348,6 +1355,192 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   );
 }
 
+
+// ── Home Screen — Bar Selection ───────────────────────────────────────────────
+function HomeScreen({ user, onSelectBar, onSignOut }) {
+  const [bars, setBars] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
+  const [barName, setBarName] = useState("");
+  const [barCode, setBarCode] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function loadBars() {
+    const { data: profiles } = await supabase.from("profiles").select("*, bars(*)").eq("id", user.id).not("bar_id", "is", null);
+    setBars((profiles || []).filter(p => p.bars));
+    setLoading(false);
+  }
+
+  useEffect(() => { loadBars(); }, []);
+
+  const ownedCount = bars.filter(p => p.is_owner).length;
+  const joinedCount = bars.filter(p => !p.is_owner).length;
+
+  async function createBar() {
+    if (!barName.trim()) { setErr("Enter a bar name."); return; }
+    if (ownedCount >= 5) { setErr("You are currently at your bar limit."); return; }
+    setSaving(true); setErr("");
+    try {
+      const code = genBarCode(barName);
+      const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: barName.trim(), owner_id: user.id, bar_code: code }).select().single();
+      if (barErr) throw barErr;
+      const name = displayName.trim() || user.user_metadata?.full_name || user.email;
+      await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: name, role: "supervisor", is_owner: true });
+      setBarName(""); setDisplayName(""); setShowCreate(false);
+      loadBars();
+    } catch(e) { setErr(e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function joinBar() {
+    if (!barCode.trim()) { setErr("Enter a bar code."); return; }
+    if (joinedCount >= 5) { setErr("You are currently at your bar limit."); return; }
+    setSaving(true); setErr("");
+    try {
+      const { data: bar, error: barErr } = await supabase.from("bars").select("*").eq("bar_code", barCode.trim().toUpperCase()).single();
+      if (barErr || !bar) throw new Error("Bar not found. Check the code and try again.");
+      const already = bars.find(p => p.bar_id === bar.id);
+      if (already) throw new Error("You are already part of this bar.");
+      const { data: viewers } = await supabase.from("profiles").select("id").eq("bar_id", bar.id).eq("role", "viewer");
+      if ((viewers || []).length >= 5) throw new Error("This bar has reached its maximum viewer capacity.");
+      const { data: existing } = await supabase.from("join_requests").select("id,status").eq("bar_id", bar.id).eq("user_id", user.id).maybeSingle();
+      if (existing?.status === "pending") throw new Error("You already have a pending request for this bar.");
+      const name = displayName.trim() || user.user_metadata?.full_name || user.email;
+      await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: name });
+      await supabase.from("profiles").upsert({ id: user.id, display_name: name });
+      setBarCode(""); setDisplayName(""); setShowJoin(false);
+      alert("Join request sent! Wait for the Supervisor to approve.");
+    } catch(e) { setErr(e.message); }
+    finally { setSaving(false); }
+  }
+
+  if (loading) return <LoadingScreen />;
+
+  return (
+    <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ background: TEAL, padding: "20px 18px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img src="/logo.png" alt="Barnakular" style={{ width: 40, height: 40, objectFit: "contain" }} />
+          <div>
+            <div style={{ fontFamily: "Georgia,serif", fontSize: 22, color: WHITE, fontWeight: 400 }}>Barnakular</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{user.email}</div>
+          </div>
+        </div>
+        <button onClick={onSignOut} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, color: WHITE, fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}>Sign Out</button>
+      </div>
+
+      <div style={{ padding: "20px 16px" }}>
+        {/* Bar limit info */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <div style={{ flex: 1, background: WHITE, borderRadius: 12, padding: "12px", textAlign: "center", boxShadow: SHADOW }}>
+            <div style={{ fontFamily: "monospace", fontSize: 22, fontWeight: 800, color: TEAL }}>{ownedCount}/5</div>
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Bars Owned</div>
+          </div>
+          <div style={{ flex: 1, background: WHITE, borderRadius: 12, padding: "12px", textAlign: "center", boxShadow: SHADOW }}>
+            <div style={{ fontFamily: "monospace", fontSize: 22, fontWeight: 800, color: BLUE }}>{joinedCount}/5</div>
+            <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Bars Joined</div>
+          </div>
+        </div>
+
+        {/* Bar cards */}
+        {bars.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px 20px", color: MUTED }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🍺</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: TXT, marginBottom: 6 }}>No bars yet</div>
+            <div style={{ fontSize: 13 }}>Create or join a bar to get started</div>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: MUTED, marginBottom: 12 }}>Your Bars</div>
+            {bars.map(p => {
+              const memberCount = 0;
+              const roleColor = ROLE_COLOR[p.role] || BLUE;
+              return (
+                <button key={p.bar_id} onClick={() => onSelectBar(p)}
+                  style={{ display: "flex", alignItems: "center", width: "100%", padding: "16px", marginBottom: 10, background: WHITE, border: "1px solid " + BORDER, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW, textAlign: "left" }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: roleColor + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginRight: 14, flexShrink: 0 }}>
+                    🍺
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: TXT, marginBottom: 4 }}>{p.bars?.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={C.tag(roleColor)}>{ROLE_LABEL[p.role] || p.role}</span>
+                      <span style={{ fontSize: 11, color: MUTED }}>{p.bars?.bar_code}</span>
+                    </div>
+                  </div>
+                  <div style={{ color: MUTED, fontSize: 20, marginLeft: 8 }}>›</div>
+                </button>
+              );
+            })}
+          </>
+        )}
+
+        {/* Create bar modal */}
+        {showCreate && (
+          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div style={{ background: WHITE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
+              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Create a Bar</div>
+              <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>You will be assigned as Supervisor</div>
+              {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
+              <div style={{ marginBottom: 12 }}>
+                <label style={C.lbl}>Your Display Name</label>
+                <input style={C.inp} placeholder="e.g. Nelson" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={C.lbl}>Bar Name</label>
+                <input style={C.inp} placeholder="e.g. The Gold Bar" value={barName} onChange={e => setBarName(e.target.value)} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={createBar} disabled={saving} style={{ ...C.btn("primary"), flex: 1, opacity: saving ? 0.6 : 1 }}>{saving ? "Creating..." : "Create Bar"}</button>
+                <button onClick={() => { setShowCreate(false); setErr(""); }} style={{ ...C.btn("ghost"), flex: 1 }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Join bar modal */}
+        {showJoin && (
+          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div style={{ background: WHITE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
+              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join a Bar</div>
+              <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>Enter the bar code to send a join request</div>
+              {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
+              <div style={{ marginBottom: 12 }}>
+                <label style={C.lbl}>Your Display Name</label>
+                <input style={C.inp} placeholder="e.g. Nelson" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={C.lbl}>Bar Code</label>
+                <input style={{ ...C.inp, letterSpacing: 3, textTransform: "uppercase" }} placeholder="e.g. QUA-2847" value={barCode} onChange={e => setBarCode(e.target.value)} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={joinBar} disabled={saving} style={{ ...C.btn("primary"), flex: 1, opacity: saving ? 0.6 : 1 }}>{saving ? "Sending..." : "Send Request"}</button>
+                <button onClick={() => { setShowJoin(false); setErr(""); }} style={{ ...C.btn("ghost"), flex: 1 }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <button onClick={() => { setShowCreate(true); setErr(""); }}
+            style={{ flex: 1, padding: "14px", borderRadius: 12, border: "none", background: TEAL, color: WHITE, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            + Create Bar
+          </button>
+          <button onClick={() => { setShowJoin(true); setErr(""); }}
+            style={{ flex: 1, padding: "14px", borderRadius: 12, border: "1px solid " + BORDER, background: WHITE, color: TEAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            Join Bar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App Root ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [appState, setAppState] = useState("loading");
@@ -1356,6 +1549,7 @@ export default function App() {
   const [bar, setBar] = useState(null);
   const [inviteToken, setInviteToken] = useState(null);
   const [tab, setTab] = useState(0);
+  const [selectedBarProfile, setSelectedBarProfile] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1377,25 +1571,33 @@ export default function App() {
 
   async function loadUserData(u) {
     setUser(u);
-    const { data: prof } = await supabase.from("profiles").select("*, bars(*)").eq("id", u.id).single();
-    if (!prof || !prof.bar_id) {
-      if (inviteToken) setAppState("invite");
-      else setAppState("onboarding");
+    // Check if user has any bar profiles
+    const { data: profiles } = await supabase.from("profiles").select("*, bars(*)").eq("id", u.id).not("bar_id", "is", null);
+    if (inviteToken) {
+      setAppState("invite");
+    } else if (!profiles || profiles.length === 0) {
+      setAppState("home");
     } else {
-      setProfile(prof);
-      setBar(prof.bars);
-      setAppState("app");
+      setAppState("home");
     }
   }
 
   function handleAuth(u) { setUser(u); loadUserData(u); }
-  function handleDone({ bar: b, role, displayName }) { setBar(b); setProfile({ role, display_name: displayName, bar_id: b.id }); setAppState("app"); }
+  function handleDone({ bar: b, role, displayName }) { setAppState("home"); }
   function handleUpdate({ displayName, barName }) { setProfile(p => ({ ...p, display_name: displayName })); if (barName) setBar(b => ({ ...b, name: barName })); }
   async function handleLogout() { await supabase.auth.signOut(); }
+  function handleSelectBar(barProfile) {
+    setSelectedBarProfile(barProfile);
+    setProfile({ ...barProfile, display_name: barProfile.display_name });
+    setBar(barProfile.bars);
+    setTab(0);
+    setAppState("app");
+  }
+  function handleBackToHome() { setAppState("home"); setSelectedBarProfile(null); }
 
   if (appState === "loading") return <LoadingScreen />;
   if (appState === "auth") return <AuthScreen onAuth={handleAuth} />;
-  if (appState === "onboarding") return <OnboardingChoice user={user} onDone={handleDone} />;
+  if (appState === "home") return <HomeScreen user={user} onSelectBar={handleSelectBar} onSignOut={handleLogout} />;
   if (appState === "invite") return <JoinViaInvite user={user} token={inviteToken} onDone={handleDone} />;
 
   const role = profile?.role;
@@ -1414,11 +1616,14 @@ export default function App() {
   return (
     <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", paddingBottom: 72 }}>
       <div style={{ padding: "13px 18px 11px", background: WHITE, borderBottom: "1px solid " + BORDER, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
-        <div>
-          <div style={{ fontFamily: "Georgia,serif", fontSize: 18, fontWeight: 400, color: TXT }}>{bar?.name || "Barnakular"}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-            <span style={C.tag(ROLE_COLOR[role] || BLUE)}>{displayName}</span>
-            <span style={{ fontSize: 10, color: MUTED }}>{"· " + (ROLE_LABEL[role] || role)}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={handleBackToHome} style={{ background: "none", border: "none", cursor: "pointer", color: TEAL, fontSize: 20, padding: 0, lineHeight: 1 }}>‹</button>
+          <div>
+            <div style={{ fontFamily: "Georgia,serif", fontSize: 18, fontWeight: 400, color: TXT }}>{bar?.name || "Barnakular"}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+              <span style={C.tag(ROLE_COLOR[role] || BLUE)}>{displayName}</span>
+              <span style={{ fontSize: 10, color: MUTED }}>{"· " + (ROLE_LABEL[role] || role)}</span>
+            </div>
           </div>
         </div>
       </div>
