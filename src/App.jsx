@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://uqqztjanagmoccfpcyxa.supabase.co";
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxcXp0amFuYWdtb2NjZnBjeXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTI5MzIsImV4cCI6MjA5Nzg4ODkzMn0.agQ-wupnb6gIe6WxiLmwQu2Wu4F6R5rA8Xs8HuMnNqw";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -24,8 +24,17 @@ const sanitise = (text, maxLen = 100) => (text || "").trim().slice(0, maxLen).re
 
 function genBarCode(name) {
   const prefix = name.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "BAR";
-  const num = Math.floor(100000 + Math.random() * 900000);
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  const num = 100000 + (buf[0] % 900000);
   return prefix + "-" + num;
+}
+
+// Validates a money/quantity input: returns a non-negative number or null if invalid
+function num(val, allowFloat = true) {
+  const n = allowFloat ? parseFloat(val) : parseInt(val, 10);
+  if (isNaN(n) || n < 0 || n > 1000000000) return null;
+  return n;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -172,27 +181,27 @@ function OnboardingChoice({ user, onDone }) {
   const [choice, setChoice] = useState(null); // null | "create" | "join"
   const [barName, setBarName] = useState("");
   const [barCode, setBarCode] = useState("");
-  const [displayName, setDisplayName] = useState(user?.user_metadata?.full_name || "");
+  const accountName = sanitise(user?.user_metadata?.full_name || user?.email || "", 50);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [requested, setRequested] = useState(false);
 
   async function createBar() {
-    if (!barName.trim() || !displayName.trim()) { setErr("Please fill in all fields."); return; }
+    if (!barName.trim()) { setErr("Please enter a bar name."); return; }
     setLoading(true); setErr("");
     try {
       const code = genBarCode(barName);
       const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: sanitise(barName, 60), owner_id: user.id, bar_code: code }).select().single();
       if (barErr) throw barErr;
-      const { error: profErr } = await supabase.from("profiles").upsert({ id: user.id, bar_id: bar.id, display_name: displayName.trim(), role: "supervisor" });
+      const { error: profErr } = await supabase.from("profiles").upsert({ id: user.id, bar_id: bar.id, display_name: accountName, role: "supervisor" });
       if (profErr) throw profErr;
-      onDone({ bar, role: "supervisor", displayName: displayName.trim() });
+      onDone({ bar, role: "supervisor", displayName: accountName });
     } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
   }
 
   async function joinBar() {
-    if (!barCode.trim() || !displayName.trim()) { setErr("Please fill in all fields."); return; }
+    if (!barCode.trim()) { setErr("Please enter a bar code."); return; }
     setLoading(true); setErr("");
     try {
       const { data: bar, error: barErr } = await supabase.from("bars").select("*").eq("bar_code", barCode.trim().toUpperCase()).single();
@@ -206,10 +215,10 @@ function OnboardingChoice({ user, onDone }) {
         if (existing.status === "pending") throw new Error("You already have a pending request for this bar.");
         if (existing.status === "approved") throw new Error("Your request was already approved.");
       }
-      const { error: reqErr } = await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: displayName.trim() });
+      const { error: reqErr } = await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: accountName });
       if (reqErr) throw reqErr;
       // Save display name to profile
-      await supabase.from("profiles").upsert({ id: user.id, display_name: displayName.trim() });
+      await supabase.from("profiles").upsert({ id: user.id, display_name: accountName });
       setRequested(true);
     } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
@@ -260,10 +269,6 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>{choice === "create" ? "You will be assigned as Supervisor" : "Send a request to join"}</div>
       </div>
       {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
-      <div style={{ width: "100%", marginBottom: 12 }}>
-        <label style={C.lbl}>Your Display Name</label>
-        <input style={C.inp} placeholder="e.g. Chukwuemeka" value={displayName} onChange={e => setDisplayName(e.target.value)} />
-      </div>
       {choice === "create" ? (
         <div style={{ width: "100%", marginBottom: 24 }}>
           <label style={C.lbl}>Bar Name</label>
@@ -303,13 +308,12 @@ function JoinViaInvite({ user, token, onDone }) {
   }, [token]);
 
   async function join() {
-    if (!displayName.trim()) { setErr("Please enter your display name."); return; }
     setJoining(true); setErr("");
     try {
-      await supabase.from("profiles").upsert({ id: user.id, bar_id: invite.bar_id, display_name: displayName.trim(), role: invite.role });
+      await supabase.from("profiles").upsert({ id: user.id, bar_id: invite.bar_id, display_name: accountName, role: invite.role });
       await supabase.from("invites").update({ used: true }).eq("id", invite.id);
       const { data: bar } = await supabase.from("bars").select().eq("id", invite.bar_id).single();
-      onDone({ bar, role: invite.role, displayName: displayName.trim() });
+      onDone({ bar, role: invite.role, displayName: accountName });
     } catch (e) { setErr(e.message); }
     finally { setJoining(false); }
   }
@@ -325,9 +329,9 @@ function JoinViaInvite({ user, token, onDone }) {
       {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
       {invite && (
         <>
-          <div style={{ width: "100%", marginBottom: 24 }}>
-            <label style={C.lbl}>Your Display Name</label>
-            <input style={C.inp} placeholder="e.g. Taiwo" value={displayName} onChange={e => setDisplayName(e.target.value)} onKeyDown={e => e.key === "Enter" && join()} />
+          <div style={{ ...C.card, background: "#EBF2F5", marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Joining as</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: TEAL }}>{accountName}</div>
           </div>
           <button onClick={join} disabled={joining} style={{ ...C.btn("primary"), opacity: joining ? 0.6 : 1 }}>
             {joining ? "Joining..." : "Join " + (invite.bars?.name || "") + " →"}
@@ -443,6 +447,10 @@ function StockTab({ barId, role, userId, displayName }) {
   const [priceData, setPriceData] = useState({});
   const [restockId, setRestockId] = useState(null);
   const [restockQty, setRestockQty] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [editRow, setEditRow] = useState({});
+  const [editErr, setEditErr] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const [err, setErr] = useState("");
   const [now, setNow] = useState(new Date());
 
@@ -466,10 +474,58 @@ function StockTab({ barId, role, userId, displayName }) {
 
   async function addDrink() {
     if (!newRow.name.trim()) { setErr("Drink name required."); return; }
+    const buy = num(newRow.buy_price) ?? 0;
+    const sell = num(newRow.sell_price) ?? 0;
+    const qty = num(newRow.quantity, false) ?? 0;
+    const min = num(newRow.min_quantity, false) ?? 3;
+    if (newRow.buy_price && num(newRow.buy_price) === null) { setErr("Buy price must be a valid non-negative number."); return; }
     const addedBySuper = role === "supervisor";
-    await supabase.from("drinks").insert({ bar_id: barId, name: sanitise(newRow.name, 60), buy_price: parseFloat(newRow.buy_price) || 0, sell_price: addedBySuper ? (parseFloat(newRow.sell_price) || 0) : 0, quantity: parseInt(newRow.quantity) || 0, min_quantity: parseInt(newRow.min_quantity) || 3, price_pending: addedBySuper ? (!newRow.sell_price || parseFloat(newRow.sell_price) <= 0) : true });
-    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added drink", detail: newRow.name.trim() });
-    setNewRow({ name: "", buy_price: "", quantity: "", min_quantity: "" }); setErr("");
+    if (addedBySuper && sell > 0 && sell <= buy) { setErr("Sell price must exceed buy price."); return; }
+    try {
+      const { error } = await supabase.from("drinks").insert({ bar_id: barId, name: sanitise(newRow.name, 60), buy_price: buy, sell_price: addedBySuper ? sell : 0, quantity: qty, min_quantity: min, price_pending: addedBySuper ? sell <= 0 : true });
+      if (error) throw error;
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added drink", detail: newRow.name.trim() });
+      setNewRow({ name: "", buy_price: "", sell_price: "", quantity: "", min_quantity: "" }); setErr("");
+    } catch (e) { setErr("Could not add drink: " + e.message); }
+  }
+
+  function openEdit(d) {
+    setEditId(d.id);
+    setEditRow({ name: d.name, quantity: String(d.quantity), min_quantity: String(d.min_quantity), buy_price: String(d.buy_price), sell_price: String(d.sell_price) });
+    setEditErr("");
+  }
+
+  async function saveEdit() {
+    const d = drinks.find(x => x.id === editId);
+    if (!d) return;
+    const name = sanitise(editRow.name, 60);
+    if (!name) { setEditErr("Drink name is required."); return; }
+    const qty = num(editRow.quantity, false);
+    const min = num(editRow.min_quantity, false);
+    const buy = num(editRow.buy_price);
+    if (qty === null || min === null || buy === null) { setEditErr("Quantity, Min and Buy price must be valid non-negative numbers."); return; }
+    const update = { name, quantity: qty, min_quantity: min, buy_price: buy };
+    if (canPrice) {
+      const sell = num(editRow.sell_price);
+      if (sell === null) { setEditErr("Sell price must be a valid non-negative number."); return; }
+      if (sell > 0 && sell <= buy) { setEditErr("Sell price must exceed buy price."); return; }
+      update.sell_price = sell;
+      update.price_pending = sell <= 0;
+    }
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase.from("drinks").update(update).eq("id", editId).eq("bar_id", barId);
+      if (error) throw error;
+      const changes = [];
+      if (name !== d.name) changes.push("name: " + d.name + " → " + name);
+      if (qty !== d.quantity) changes.push("qty: " + d.quantity + " → " + qty);
+      if (min !== d.min_quantity) changes.push("min: " + d.min_quantity + " → " + min);
+      if (buy !== d.buy_price) changes.push("buy: " + fmt(d.buy_price) + " → " + fmt(buy));
+      if (canPrice && update.sell_price !== d.sell_price) changes.push("sell: " + fmt(d.sell_price) + " → " + fmt(update.sell_price));
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Edited drink " + d.name, detail: changes.join(", ") || "no changes" });
+      setEditId(null); setEditErr("");
+    } catch (e) { setEditErr("Could not save: " + e.message); }
+    finally { setSavingEdit(false); }
   }
 
   async function savePrice(id) {
@@ -482,19 +538,26 @@ function StockTab({ barId, role, userId, displayName }) {
   }
 
   async function doRestock() {
-    const q = parseInt(restockQty);
-    if (isNaN(q) || q <= 0) { alert("Enter a valid quantity."); return; }
+    const q = num(restockQty, false);
+    if (q === null || q <= 0) { alert("Enter a valid quantity."); return; }
     const d = drinks.find(x => x.id === restockId);
-    await supabase.from("restocks").insert({ bar_id: barId, drink_id: restockId, quantity: q, restock_date: today() });
-    await supabase.from("drinks").update({ quantity: d.quantity + q }).eq("id", restockId);
-    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+"+q+" units" });
-    setRestockId(null); setRestockQty("");
+    try {
+      const { error } = await supabase.from("restocks").insert({ bar_id: barId, drink_id: restockId, quantity: q, restock_date: today() });
+      if (error) throw error;
+      await supabase.from("drinks").update({ quantity: d.quantity + q }).eq("id", restockId).eq("bar_id", barId);
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+"+q+" units" });
+      setRestockId(null); setRestockQty("");
+    } catch (e) { alert("Restock failed: " + e.message); }
   }
 
   async function archiveDrink(id) {
     const d = drinks.find(x => x.id === id);
-    await supabase.from("drinks").update({ archived: true }).eq("id", id);
-    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Archived drink", detail: d.name });
+    if (!window.confirm("Archive " + d.name + "? It will be hidden from the stock register but its history is kept. You can restore it from Settings.")) return;
+    try {
+      const { error } = await supabase.from("drinks").update({ archived: true }).eq("id", id).eq("bar_id", barId);
+      if (error) throw error;
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Archived drink", detail: d.name });
+    } catch (e) { alert("Archive failed: " + e.message); }
   }
 
   const pending = drinks.filter(d => d.price_pending);
@@ -613,8 +676,8 @@ function StockTab({ barId, role, userId, displayName }) {
                   <td style={{ ...C.td(), color: TEAL }}>{d.price_pending ? "—" : fmt(d.quantity * d.sell_price)}</td>
                   {!isReadOnly && (
                     <td style={{ ...C.td(), whiteSpace: "nowrap" }}>
-                      {canEdit && <button onClick={() => setRestockId(d.id)} style={{ background: OK + "18", color: OK, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", marginRight: 3 }}>+</button>}
-                      {canPrice && !d.price_pending && <button onClick={() => { setPriceId(d.id === priceId ? null : d.id); setPriceData({ sell_price: d.sell_price }); }} style={{ background: AMBER + "18", color: AMBER, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", marginRight: 3 }}>₦</button>}
+                      {canEdit && <button onClick={() => setRestockId(d.id)} title="Restock" style={{ background: OK + "18", color: OK, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", marginRight: 3 }}>+</button>}
+                      {canEdit && <button onClick={() => openEdit(d)} title="Edit figures" style={{ background: TEAL + "14", color: TEAL, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", marginRight: 3 }}>✎</button>}
                       {role === "supervisor" && <button onClick={() => archiveDrink(d.id)} style={{ background: ERR + "18", color: ERR, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Archive</button>}
                     </td>
                   )}
@@ -666,6 +729,52 @@ function StockTab({ barId, role, userId, displayName }) {
           </div>
         );
       })()}
+
+      {editId && (() => {
+        const d = drinks.find(x => x.id === editId);
+        if (!d) return null;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ background: WHITE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 360, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Edit — {d.name}</div>
+              <div style={{ fontSize: 12, color: MUTED, marginBottom: 16 }}>All changes are recorded in the audit log.</div>
+              <div style={{ marginBottom: 11 }}>
+                <label style={C.lbl}>Drink Name</label>
+                <input style={C.inp} value={editRow.name} onChange={e => setEditRow(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div style={{ display: "flex", gap: 10, marginBottom: 11 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={C.lbl}>Quantity</label>
+                  <input style={C.inp} type="number" value={editRow.quantity} onChange={e => setEditRow(p => ({ ...p, quantity: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={C.lbl}>Min Quantity</label>
+                  <input style={C.inp} type="number" value={editRow.min_quantity} onChange={e => setEditRow(p => ({ ...p, min_quantity: e.target.value }))} />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginBottom: 11 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={C.lbl}>Buy Price (₦)</label>
+                  <input style={C.inp} type="number" value={editRow.buy_price} onChange={e => setEditRow(p => ({ ...p, buy_price: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={C.lbl}>Sell Price (₦)</label>
+                  {canPrice ? (
+                    <input style={C.inp} type="number" value={editRow.sell_price} onChange={e => setEditRow(p => ({ ...p, sell_price: e.target.value }))} />
+                  ) : (
+                    <div style={{ ...C.inp, background: BG, color: MUTED, fontSize: 12, display: "flex", alignItems: "center" }}>Supervisor only</div>
+                  )}
+                </div>
+              </div>
+              {editErr && <div style={{ color: ERR, fontSize: 12, marginBottom: 10 }}>{editErr}</div>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={{ ...C.btn("primary"), flex: 1, opacity: savingEdit ? 0.6 : 1 }} disabled={savingEdit} onClick={saveEdit}>{savingEdit ? "Saving..." : "✓ Save Changes"}</button>
+                <button style={{ ...C.btn("ghost"), flex: 1 }} onClick={() => setEditId(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -711,6 +820,14 @@ function DailyLogTab({ barId, role, userId, displayName }) {
   async function saveClosing() {
     const hasAny = drinks.some(d => closeEnt[d.id] !== undefined && closeEnt[d.id] !== "");
     if (!hasAny) { alert("Enter at least one closing quantity."); return; }
+    for (const d of drinks) {
+      const val = closeEnt[d.id];
+      if (val === undefined || val === "") continue;
+      const n = num(val, false);
+      if (n === null) { alert("Invalid closing quantity for " + d.name + ". Enter a non-negative whole number."); return; }
+      const opening = getOpening(d.id);
+      if (opening !== null && n > opening && !window.confirm(d.name + ": closing (" + n + ") is higher than opening (" + opening + "). Save anyway?")) return;
+    }
     setSaving(true);
     try {
       for (const d of drinks) {
@@ -990,6 +1107,58 @@ function ReportTab({ barId, role }) {
   const seg = v => ({ flex: 1, padding: "11px", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", background: view === v ? TEAL : INP, color: view === v ? WHITE : MUTED, borderRadius: 10 });
   const isManager = role === "manager";
 
+  function downloadReport() {
+    if (!data) return;
+    const showMoney = role !== "manager";
+    const label = view === "daily" ? fmtDate(date) : new Date(month + "-01").toLocaleString("en-NG", { month: "long", year: "numeric" });
+    const gross = data.totalRev - data.totalCOGS;
+    const net = gross - data.totalExp;
+    const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const h = [];
+    h.push("<!DOCTYPE html><html><head><title>Barnakular Report</title><meta charset='utf-8'>");
+    h.push("<style>body{font-family:-apple-system,Segoe UI,sans-serif;color:#1A1A1A;padding:24px;max-width:720px;margin:0 auto}h1{font-family:Georgia,serif;font-weight:400;font-size:26px;color:#1B3A4B;margin:0}h2{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#8A8A8A;border-bottom:1px solid #E5E7EB;padding-bottom:6px;margin-top:28px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#8A8A8A;border-bottom:2px solid #E5E7EB;padding:7px}td{padding:7px;border-bottom:1px solid #F0F1F3}.r{text-align:right}.mono{font-family:monospace;font-weight:700}.ok{color:#27AE60}.err{color:#E03131}.teal{color:#1B3A4B}.sub{color:#8A8A8A;font-size:12px}.sum{background:#F6F7F9;border-radius:10px;padding:14px 16px;margin-top:12px}.sum div{display:flex;justify-content:space-between;padding:4px 0}@media print{body{padding:0}}</style></head><body>");
+    h.push("<h1>Barnakular</h1><div class='sub'>" + esc(view === "daily" ? "Daily Report" : "Monthly Report") + " — " + esc(label) + "</div>");
+    h.push("<div class='sub'>Generated " + esc(new Date().toLocaleString("en-NG")) + " · Role: " + esc(ROLE_LABEL[role] || role) + "</div>");
+    if (showMoney) {
+      h.push("<h2>Profit &amp; Loss</h2><div class='sum'>");
+      if (data.daysLogged !== undefined) h.push("<div><span>Days Logged</span><span class='mono'>" + data.daysLogged + "</span></div>");
+      h.push("<div><span>Revenue</span><span class='mono teal'>" + esc(fmt(data.totalRev)) + "</span></div>");
+      h.push("<div><span>Cost of Goods</span><span class='mono'>" + esc(fmt(data.totalCOGS)) + "</span></div>");
+      h.push("<div><span>Gross Profit</span><span class='mono " + (gross >= 0 ? "ok" : "err") + "'>" + esc(fmt(gross)) + "</span></div>");
+      h.push("<div><span>Expenses</span><span class='mono err'>" + esc(fmt(data.totalExp)) + "</span></div>");
+      h.push("<div style='border-top:1px solid #E5E7EB;margin-top:6px;padding-top:8px'><span><strong>Net " + (net >= 0 ? "Profit" : "Loss") + "</strong></span><span class='mono " + (net >= 0 ? "ok" : "err") + "' style='font-size:16px'>" + esc(fmt(Math.abs(net))) + "</span></div>");
+      const cashAmt = view === "daily" ? data.dayCash?.amount : data.totalCash;
+      if (cashAmt) h.push("<div><span>Cash Collected</span><span class='mono ok'>" + esc(fmt(cashAmt)) + "</span></div>");
+      h.push("</div>");
+    }
+    h.push("<h2>" + (showMoney ? "Sales Breakdown" : "Units Breakdown") + "</h2><table><tr><th>Drink</th><th class='r'>Sold</th>" + (showMoney ? "<th class='r'>Revenue</th><th class='r'>Profit</th>" : "") + "<th class='r'>Closing</th></tr>");
+    data.drinkStats.forEach(d => {
+      h.push("<tr><td>" + esc(d.name) + "</td><td class='r mono'>" + d.sold + "</td>" + (showMoney ? "<td class='r mono'>" + esc(fmt(d.rev)) + "</td><td class='r mono'>" + esc(fmt(d.profit)) + "</td>" : "") + "<td class='r mono'>" + (d.lastClose ?? "—") + "</td></tr>");
+    });
+    h.push("<tr><td><strong>Totals</strong></td><td class='r mono'>" + data.drinkStats.reduce((s, d) => s + d.sold, 0) + "</td>" + (showMoney ? "<td class='r mono teal'>" + esc(fmt(data.totalRev)) + "</td><td class='r mono " + (gross >= 0 ? "ok" : "err") + "'>" + esc(fmt(gross)) + "</td>" : "") + "<td></td></tr></table>");
+    if (data.filterRestocks.length > 0) {
+      h.push("<h2>Restocks</h2><table><tr><th>Drink</th><th class='r'>Units Added</th>" + (showMoney ? "<th class='r'>Value</th>" : "") + "</tr>");
+      data.filterRestocks.forEach(r => {
+        h.push("<tr><td>" + esc(r.drinks?.name) + "</td><td class='r mono'>" + r.quantity + "</td>" + (showMoney ? "<td class='r mono'>" + esc(fmt(r.quantity * (r.drinks?.buy_price || 0))) + "</td>" : "") + "</tr>");
+      });
+      h.push("</table>");
+    }
+    if (showMoney && data.filterExp.length > 0) {
+      h.push("<h2>Expenses</h2><table><tr><th>Description</th><th>Category</th><th class='r'>Amount</th></tr>");
+      data.filterExp.forEach(e => {
+        h.push("<tr><td>" + esc(e.description) + "</td><td>" + esc(e.category) + "</td><td class='r mono err'>" + esc(fmt(e.amount)) + "</td></tr>");
+      });
+      h.push("</table>");
+    }
+    h.push("<div class='sub' style='margin-top:28px;text-align:center'>Barnakular Bar Management System</div>");
+    h.push("</body></html>");
+    const w = window.open("", "_blank");
+    if (!w) { alert("Please allow pop-ups to download the report."); return; }
+    w.document.write(h.join(""));
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  }
+
   return (
     <div>
       <div style={{ display: "flex", gap: 6, background: INP, borderRadius: 12, padding: 4, marginBottom: 16 }}>
@@ -1013,6 +1182,9 @@ function ReportTab({ barId, role }) {
 
       {!loading && data && (
         <>
+          <button onClick={downloadReport} style={{ ...C.btn("amber"), marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            ⬇ Download {view === "daily" ? "Daily" : "Monthly"} Report (PDF)
+          </button>
           {!isManager && (
             <>
               <PLCard
@@ -1133,6 +1305,10 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   const [saved, setSaved] = useState(false);
   const [promotionWindow, setPromotionWindow] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [archived, setArchived] = useState([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   async function loadData() {
     const [{ data: profs }, { data: reqs }, { data: promos }] = await Promise.all([
@@ -1148,6 +1324,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
   useEffect(() => {
     loadData();
+    loadArchived();
     const sub = supabase.channel("settings-" + barId)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: "bar_id=eq." + barId }, loadData)
       .on("postgres_changes", { event: "*", schema: "public", table: "join_requests", filter: "bar_id=eq." + barId }, loadData)
@@ -1169,12 +1346,55 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   }, [promotionWindow]);
 
   async function saveProfile() {
-    await supabase.from("profiles").update({ display_name: newName.trim() }).eq("id", userId);
+    const clean = sanitise(newName, 50);
+    if (!clean) { alert("Display name cannot be empty."); return; }
+    // Account-wide: this updates the user's name in EVERY bar they belong to
+    await supabase.from("profiles").update({ display_name: clean }).eq("id", userId);
     if (role === "supervisor" && newBarName.trim() !== barName) {
-      await supabase.from("bars").update({ name: newBarName.trim() }).eq("id", barId);
+      await supabase.from("bars").update({ name: sanitise(newBarName, 60) }).eq("id", barId);
     }
     setSaved(true); setTimeout(() => setSaved(false), 2000);
-    onUpdate({ displayName: newName.trim(), barName: newBarName.trim() });
+    onUpdate({ displayName: clean, barName: newBarName.trim() });
+  }
+
+  async function loadArchived() {
+    const { data } = await supabase.from("drinks").select("*").eq("bar_id", barId).eq("archived", true).order("name");
+    setArchived(data || []);
+  }
+
+  async function restoreDrink(d) {
+    await supabase.from("drinks").update({ archived: false }).eq("id", d.id).eq("bar_id", barId);
+    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restored drink", detail: d.name });
+    loadArchived();
+  }
+
+  async function deleteArchivedDrink(d) {
+    if (!window.confirm("Permanently delete " + d.name + "? This also removes its stock logs and restock history. This cannot be undone.")) return;
+    try {
+      await supabase.from("stock_logs").delete().eq("drink_id", d.id).eq("bar_id", barId);
+      await supabase.from("restocks").delete().eq("drink_id", d.id).eq("bar_id", barId);
+      const { error } = await supabase.from("drinks").delete().eq("id", d.id).eq("bar_id", barId);
+      if (error) throw error;
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Deleted archived drink", detail: d.name });
+      loadArchived();
+    } catch (e) { alert("Delete failed: " + e.message); }
+  }
+
+  async function deleteBar() {
+    if (deleteConfirm !== barName) { alert("Type the bar name exactly to confirm deletion."); return; }
+    if (!window.confirm("FINAL WARNING: This permanently deletes " + barName + " and ALL its data — drinks, logs, expenses, reports, members. This cannot be undone. Continue?")) return;
+    setDeleting(true);
+    try {
+      const tables = ["audit_logs", "cash_records", "expenses", "restocks", "stock_logs", "drinks", "invites", "join_requests", "promotion_windows", "profiles"];
+      for (const t of tables) {
+        const { error } = await supabase.from(t).delete().eq("bar_id", barId);
+        if (error) throw new Error(t + ": " + error.message);
+      }
+      const { error: barErr } = await supabase.from("bars").delete().eq("id", barId);
+      if (barErr) throw barErr;
+      alert("Bar deleted.");
+      window.location.reload();
+    } catch (e) { alert("Delete failed: " + e.message); setDeleting(false); }
   }
 
   async function approveRequest(req) {
@@ -1193,7 +1413,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
   async function removeViewer(memberId) {
     if (!window.confirm("Remove this viewer from the bar?")) return;
-    await supabase.from("profiles").update({ bar_id: null, role: null }).eq("id", memberId);
+    await supabase.from("profiles").delete().eq("id", memberId).eq("bar_id", barId);
     loadData();
   }
 
@@ -1206,14 +1426,14 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
     if (newRole === "supervisor") {
       const expiresAt = new Date(Date.now() + 24 * 3600000).toISOString();
       await supabase.from("promotion_windows").insert({ bar_id: barId, old_supervisor_id: userId, new_supervisor_id: memberId, expires_at: expiresAt });
-      await supabase.from("profiles").update({ role: "supervisor" }).eq("id", memberId);
+      await supabase.from("profiles").update({ role: "supervisor" }).eq("id", memberId).eq("bar_id", barId);
       alert(member?.display_name + " is now Supervisor. You have 24 hours to cancel this if it was a mistake.");
     } else if (newRole === "manager") {
       const currentManager = members.find(m => m.role === "manager");
-      if (currentManager) await supabase.from("profiles").update({ role: "viewer" }).eq("id", currentManager.id);
-      await supabase.from("profiles").update({ role: "manager" }).eq("id", memberId);
+      if (currentManager) await supabase.from("profiles").update({ role: "viewer" }).eq("id", currentManager.id).eq("bar_id", barId);
+      await supabase.from("profiles").update({ role: "manager" }).eq("id", memberId).eq("bar_id", barId);
     } else {
-      await supabase.from("profiles").update({ role: newRole }).eq("id", memberId);
+      await supabase.from("profiles").update({ role: newRole }).eq("id", memberId).eq("bar_id", barId);
     }
     loadData();
   }
@@ -1221,8 +1441,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   async function cancelPromotion() {
     if (!promotionWindow) return;
     await supabase.from("promotion_windows").update({ cancelled: true }).eq("id", promotionWindow.id);
-    await supabase.from("profiles").update({ role: "viewer" }).eq("id", promotionWindow.new_supervisor_id);
-    await supabase.from("profiles").update({ role: "supervisor" }).eq("id", userId);
+    await supabase.from("profiles").update({ role: "viewer" }).eq("id", promotionWindow.new_supervisor_id).eq("bar_id", barId);
+    await supabase.from("profiles").update({ role: "supervisor" }).eq("id", userId).eq("bar_id", barId);
     setPromotionWindow(null);
     alert("Promotion cancelled. You are Supervisor again.");
     loadData();
@@ -1253,8 +1473,9 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
       <div style={C.sec}>Profile <div style={C.line} /></div>
       <div style={C.card}>
         <div style={{ marginBottom: 12 }}>
-          <label style={C.lbl}>Display Name</label>
+          <label style={C.lbl}>Display Name (used in all your bars)</label>
           <input style={C.inp} value={newName} onChange={e => setNewName(e.target.value)} />
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>Changing this updates your name in every bar you own or have joined.</div>
         </div>
         {role === "supervisor" && (
           <div style={{ marginBottom: 12 }}>
@@ -1351,6 +1572,55 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </>
       )}
 
+      {(role === "supervisor" || role === "manager") && (
+        <>
+          <div style={C.sec}>Archived Drinks ({archived.length}) <div style={C.line} /></div>
+          <div style={C.card}>
+            {archived.length === 0 ? (
+              <div style={{ fontSize: 13, color: MUTED }}>No archived drinks. Drinks you archive from the stock register will appear here.</div>
+            ) : (
+              <>
+                <button onClick={() => setShowArchived(s => !s)} style={{ ...C.btn("ghost"), marginBottom: showArchived ? 12 : 0 }}>
+                  {showArchived ? "▲ Hide Archived Drinks" : "▼ View Archived Drinks (" + archived.length + ")"}
+                </button>
+                {showArchived && archived.map(d => (
+                  <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid " + BORDER }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{d.name}</div>
+                      <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Buy {fmt(d.buy_price)} · Last qty {d.quantity}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => restoreDrink(d)} style={{ background: OK + "18", color: OK, border: "none", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Restore</button>
+                      {role === "supervisor" && <button onClick={() => deleteArchivedDrink(d)} style={{ background: ERR + "18", color: ERR, border: "none", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Delete</button>}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {role === "supervisor" && (
+        <>
+          <div style={{ ...C.sec, color: ERR }}>Danger Zone <div style={{ ...C.line, background: ERR + "33" }} /></div>
+          <div style={{ ...C.card, border: "1.5px solid " + ERR + "44" }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: ERR, marginBottom: 6 }}>Delete This Bar</div>
+            <div style={{ fontSize: 13, color: MUTED, marginBottom: 13, lineHeight: 1.5 }}>
+              Permanently deletes <strong style={{ color: TXT }}>{barName}</strong> and all its drinks, logs, expenses, reports and members. This cannot be undone.
+            </div>
+            <label style={C.lbl}>Type the bar name to confirm</label>
+            <input style={{ ...C.inp, marginBottom: 12 }} placeholder={barName} value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} />
+            <button
+              onClick={deleteBar}
+              disabled={deleting || deleteConfirm !== barName}
+              style={{ ...C.btn("err"), opacity: deleting || deleteConfirm !== barName ? 0.4 : 1, cursor: deleteConfirm !== barName ? "not-allowed" : "pointer" }}>
+              {deleting ? "Deleting..." : "Delete Bar Permanently"}
+            </button>
+          </div>
+        </>
+      )}
+
       <div style={C.sec}>Account <div style={C.line} /></div>
       <div style={C.card}>
         <div style={{ fontSize: 13, color: MUTED, marginBottom: 13 }}>Signing out will return you to the login screen.</div>
@@ -1390,9 +1660,9 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
     setSaving(true); setErr("");
     try {
       const code = genBarCode(barName);
-      const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: barName.trim(), owner_id: user.id, bar_code: code }).select().single();
+      const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: sanitise(barName, 60), owner_id: user.id, bar_code: code }).select().single();
       if (barErr) throw barErr;
-      const name = sanitise(displayName || user.user_metadata?.full_name || user.email, 50);
+      const name = sanitise(user.user_metadata?.full_name || user.email, 50);
       await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: name, role: "supervisor", is_owner: true });
       setBarName(""); setDisplayName(""); setShowCreate(false);
       loadBars();
@@ -1413,7 +1683,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       if ((viewers || []).length >= 5) throw new Error("This bar has reached its maximum viewer capacity.");
       const { data: existing } = await supabase.from("join_requests").select("id,status").eq("bar_id", bar.id).eq("user_id", user.id).maybeSingle();
       if (existing?.status === "pending") throw new Error("You already have a pending request for this bar.");
-      const name = displayName.trim() || user.user_metadata?.full_name || user.email;
+      const name = sanitise(user.user_metadata?.full_name || user.email || "", 50);
       await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: name });
       await supabase.from("profiles").upsert({ id: user.id, display_name: name });
       setBarCode(""); setDisplayName(""); setShowJoin(false);
@@ -1491,10 +1761,6 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Create a Bar</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>You will be assigned as Supervisor</div>
               {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
-              <div style={{ marginBottom: 12 }}>
-                <label style={C.lbl}>Your Display Name</label>
-                <input style={C.inp} placeholder="e.g. Nelson" value={displayName} onChange={e => setDisplayName(e.target.value)} />
-              </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={C.lbl}>Bar Name</label>
                 <input style={C.inp} placeholder="e.g. The Gold Bar" value={barName} onChange={e => setBarName(e.target.value)} />
@@ -1514,10 +1780,6 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join a Bar</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>Enter the bar code to send a join request</div>
               {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
-              <div style={{ marginBottom: 12 }}>
-                <label style={C.lbl}>Your Display Name</label>
-                <input style={C.inp} placeholder="e.g. Nelson" value={displayName} onChange={e => setDisplayName(e.target.value)} />
-              </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={C.lbl}>Bar Code</label>
                 <input style={{ ...C.inp, letterSpacing: 3, textTransform: "uppercase" }} placeholder="e.g. QUA-2847" value={barCode} onChange={e => setBarCode(e.target.value)} />
@@ -1620,6 +1882,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", paddingBottom: 72 }}>
+      <style>{"@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} .tabwrap{animation:fadeUp 0.22s ease} button{-webkit-tap-highlight-color:transparent;transition:transform 0.08s ease,opacity 0.15s ease} button:active{transform:scale(0.97)} input{transition:border-color 0.15s ease,box-shadow 0.15s ease} input:focus{border-color:" + TEAL + " !important;box-shadow:0 0 0 3px " + TEAL + "22} input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}"}</style>
       <div style={{ padding: "13px 18px 11px", background: WHITE, borderBottom: "1px solid " + BORDER, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={handleBackToHome} style={{ background: "none", border: "none", cursor: "pointer", color: TEAL, fontSize: 20, padding: 0, lineHeight: 1 }}>‹</button>
@@ -1633,7 +1896,7 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: "16px 14px 10px", overflowY: "auto" }}>
+      <div className="tabwrap" key={tab} style={{ flex: 1, padding: "16px 14px 10px", overflowY: "auto" }}>
         {tab === 0 && <StockTab barId={barId} role={role} userId={user?.id} displayName={displayName} />}
         {tab === 1 && <DailyLogTab barId={barId} role={role} userId={user?.id} displayName={displayName} />}
         {tab === 2 && <ExpensesTab barId={barId} role={role} userId={user?.id} />}
