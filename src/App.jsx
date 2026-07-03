@@ -193,8 +193,8 @@ function OnboardingChoice({ user, onDone }) {
       const code = genBarCode(barName);
       const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: sanitise(barName, 60), owner_id: user.id, bar_code: code }).select().single();
       if (barErr) throw barErr;
-      const { error: profErr } = await supabase.from("profiles").upsert({ id: user.id, bar_id: bar.id, display_name: accountName, role: "supervisor" });
-      if (profErr) throw profErr;
+      const { error: profErr } = await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: accountName, role: "supervisor", is_owner: true });
+      if (profErr) { await supabase.from("bars").delete().eq("id", bar.id); throw profErr; }
       onDone({ bar, role: "supervisor", displayName: accountName });
     } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
@@ -217,8 +217,6 @@ function OnboardingChoice({ user, onDone }) {
       }
       const { error: reqErr } = await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: accountName });
       if (reqErr) throw reqErr;
-      // Save display name to profile
-      await supabase.from("profiles").upsert({ id: user.id, display_name: accountName });
       setRequested(true);
     } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
@@ -310,7 +308,8 @@ function JoinViaInvite({ user, token, onDone }) {
   async function join() {
     setJoining(true); setErr("");
     try {
-      await supabase.from("profiles").upsert({ id: user.id, bar_id: invite.bar_id, display_name: accountName, role: invite.role });
+      const { error: profErr } = await supabase.from("profiles").insert({ id: user.id, bar_id: invite.bar_id, display_name: accountName, role: invite.role, is_owner: false });
+      if (profErr) throw profErr;
       await supabase.from("invites").update({ used: true }).eq("id", invite.id);
       const { data: bar } = await supabase.from("bars").select().eq("id", invite.bar_id).single();
       onDone({ bar, role: invite.role, displayName: accountName });
@@ -486,6 +485,7 @@ function StockTab({ barId, role, userId, displayName }) {
       if (error) throw error;
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added drink", detail: newRow.name.trim() });
       setNewRow({ name: "", buy_price: "", sell_price: "", quantity: "", min_quantity: "" }); setErr("");
+      loadDrinks();
     } catch (e) { setErr("Could not add drink: " + e.message); }
   }
 
@@ -524,6 +524,7 @@ function StockTab({ barId, role, userId, displayName }) {
       if (canPrice && update.sell_price !== d.sell_price) changes.push("sell: " + fmt(d.sell_price) + " → " + fmt(update.sell_price));
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Edited drink " + d.name, detail: changes.join(", ") || "no changes" });
       setEditId(null); setEditErr("");
+      loadDrinks();
     } catch (e) { setEditErr("Could not save: " + e.message); }
     finally { setSavingEdit(false); }
   }
@@ -535,6 +536,7 @@ function StockTab({ barId, role, userId, displayName }) {
     await supabase.from("drinks").update({ sell_price: s, price_pending: false }).eq("id", id);
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Set sell price of " + d.name, detail: fmt(s) });
     setPriceId(null); setErr("");
+    loadDrinks();
   }
 
   async function doRestock() {
@@ -547,6 +549,7 @@ function StockTab({ barId, role, userId, displayName }) {
       await supabase.from("drinks").update({ quantity: d.quantity + q }).eq("id", restockId).eq("bar_id", barId);
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+"+q+" units" });
       setRestockId(null); setRestockQty("");
+      loadDrinks();
     } catch (e) { alert("Restock failed: " + e.message); }
   }
 
@@ -557,6 +560,7 @@ function StockTab({ barId, role, userId, displayName }) {
       const { error } = await supabase.from("drinks").update({ archived: true }).eq("id", id).eq("bar_id", barId);
       if (error) throw error;
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Archived drink", detail: d.name });
+      loadDrinks();
     } catch (e) { alert("Archive failed: " + e.message); }
   }
 
@@ -791,6 +795,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [expandedDate, setExpandedDate] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const canLog = role === "manager";
   const isLocked = date < today() && role === "manager";
@@ -806,7 +811,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
     load();
     const sub = supabase.channel("logs-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "stock_logs", filter: "bar_id=eq." + barId }, load).subscribe();
     return () => supabase.removeChannel(sub);
-  }, [barId]);
+  }, [barId, reloadKey]);
 
   function getOpening(drinkId) {
     const prev = logs.filter(l => l.drink_id === drinkId && l.log_type === "closing" && l.log_date < date).sort((a, b) => b.log_date.localeCompare(a.log_date))[0];
@@ -842,6 +847,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
       }
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Saved closing stock", detail: "for " + date });
       setCloseEnt({}); setShowCash(true);
+      setReloadKey(k => k + 1);
     } finally { setSaving(false); }
   }
 
@@ -1006,6 +1012,7 @@ function ExpensesTab({ barId, role, userId }) {
     await supabase.from("expenses").insert({ bar_id: barId, category, description: sanitise(desc, 200), amount: parseFloat(amount), expense_date: date, created_by: userId });
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added expense", detail: category + ": " + desc });
     setDesc(""); setAmount(""); setErr("");
+    load();
   }
 
   if (loading) return <div style={C.empty}>Loading expenses...</div>;
@@ -1401,7 +1408,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
     const viewers = members.filter(m => m.role === "viewer");
     if (viewers.length >= 5) { alert("Maximum 5 viewers already reached. Remove a viewer first."); return; }
     if (!req.user_id || !req.bar_id) { alert("Invalid request."); return; }
-    await supabase.from("profiles").upsert({ id: req.user_id, bar_id: barId, display_name: req.display_name, role: "viewer" });
+    const { error } = await supabase.from("profiles").insert({ id: req.user_id, bar_id: barId, display_name: req.display_name, role: "viewer", is_owner: false });
+    if (error) { alert("Could not approve: " + error.message); return; }
     await supabase.from("join_requests").update({ status: "approved" }).eq("id", req.id);
     loadData();
   }
@@ -1663,7 +1671,12 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       const { data: bar, error: barErr } = await supabase.from("bars").insert({ name: sanitise(barName, 60), owner_id: user.id, bar_code: code }).select().single();
       if (barErr) throw barErr;
       const name = sanitise(user.user_metadata?.full_name || user.email, 50);
-      await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: name, role: "supervisor", is_owner: true });
+      const { error: profErr } = await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: name, role: "supervisor", is_owner: true });
+      if (profErr) {
+        // Don't leave an orphan bar behind
+        await supabase.from("bars").delete().eq("id", bar.id);
+        throw new Error("Could not create your Supervisor profile: " + profErr.message);
+      }
       setBarName(""); setDisplayName(""); setShowCreate(false);
       loadBars();
     } catch(e) { setErr(e.message); }
@@ -1684,8 +1697,8 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       const { data: existing } = await supabase.from("join_requests").select("id,status").eq("bar_id", bar.id).eq("user_id", user.id).maybeSingle();
       if (existing?.status === "pending") throw new Error("You already have a pending request for this bar.");
       const name = sanitise(user.user_metadata?.full_name || user.email || "", 50);
-      await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: name });
-      await supabase.from("profiles").upsert({ id: user.id, display_name: name });
+      const { error: reqErr } = await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: name });
+      if (reqErr) throw reqErr;
       setBarCode(""); setDisplayName(""); setShowJoin(false);
       alert("Join request sent! Wait for the Supervisor to approve.");
     } catch(e) { setErr(e.message); }
