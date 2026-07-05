@@ -30,6 +30,13 @@ function genBarCode(name) {
   return prefix + "-" + num;
 }
 
+// Extracts a human-readable message from any error shape Supabase can throw
+function errMsg(e) {
+  if (!e) return "Something went wrong. Please try again.";
+  if (typeof e === "string") return e;
+  return e.message || e.error_description || e.msg || e.details || "Something went wrong (" + (e.code || e.status || "unknown") + "). Please try again.";
+}
+
 // Validates a money/quantity input: returns a non-negative number or null if invalid
 function num(val, allowFloat = true) {
   const n = allowFloat ? parseFloat(val) : parseInt(val, 10);
@@ -99,7 +106,7 @@ function AuthScreen({ onAuth }) {
         if (error) throw error;
         onAuth(data.user);
       }
-    } catch (e) { setErr(e.message); }
+    } catch (e) { console.error("Auth error:", e); setErr(errMsg(e)); }
     finally { setLoading(false); }
   }
 
@@ -108,7 +115,7 @@ function AuthScreen({ onAuth }) {
     try {
       const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
       if (error) throw error;
-    } catch (e) { setErr(e.message); setLoading(false); }
+    } catch (e) { console.error("Auth error:", e); setErr(errMsg(e)); setLoading(false); }
   }
 
   const wrap = { minHeight: "100vh", background: WHITE, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 36px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" };
@@ -196,7 +203,7 @@ function OnboardingChoice({ user, onDone }) {
       const { error: profErr } = await supabase.from("profiles").insert({ id: user.id, bar_id: bar.id, display_name: accountName, role: "supervisor", is_owner: true });
       if (profErr) { await supabase.from("bars").delete().eq("id", bar.id); throw profErr; }
       onDone({ bar, role: "supervisor", displayName: accountName });
-    } catch (e) { setErr(e.message); }
+    } catch (e) { console.error(e); setErr(errMsg(e)); }
     finally { setLoading(false); }
   }
 
@@ -218,7 +225,7 @@ function OnboardingChoice({ user, onDone }) {
       const { error: reqErr } = await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: accountName });
       if (reqErr) throw reqErr;
       setRequested(true);
-    } catch (e) { setErr(e.message); }
+    } catch (e) { console.error(e); setErr(errMsg(e)); }
     finally { setLoading(false); }
   }
 
@@ -313,7 +320,7 @@ function JoinViaInvite({ user, token, onDone }) {
       await supabase.from("invites").update({ used: true }).eq("id", invite.id);
       const { data: bar } = await supabase.from("bars").select().eq("id", invite.bar_id).single();
       onDone({ bar, role: invite.role, displayName: accountName });
-    } catch (e) { setErr(e.message); }
+    } catch (e) { console.error(e); setErr(errMsg(e)); }
     finally { setJoining(false); }
   }
 
@@ -486,7 +493,7 @@ function StockTab({ barId, role, userId, displayName }) {
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added drink", detail: newRow.name.trim() });
       setNewRow({ name: "", buy_price: "", sell_price: "", quantity: "", min_quantity: "" }); setErr("");
       loadDrinks();
-    } catch (e) { setErr("Could not add drink: " + e.message); }
+    } catch (e) { setErr("Could not add drink: " + errMsg(e)); }
   }
 
   function openEdit(d) {
@@ -525,7 +532,7 @@ function StockTab({ barId, role, userId, displayName }) {
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Edited drink " + d.name, detail: changes.join(", ") || "no changes" });
       setEditId(null); setEditErr("");
       loadDrinks();
-    } catch (e) { setEditErr("Could not save: " + e.message); }
+    } catch (e) { setEditErr("Could not save: " + errMsg(e)); }
     finally { setSavingEdit(false); }
   }
 
@@ -550,7 +557,7 @@ function StockTab({ barId, role, userId, displayName }) {
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+"+q+" units" });
       setRestockId(null); setRestockQty("");
       loadDrinks();
-    } catch (e) { alert("Restock failed: " + e.message); }
+    } catch (e) { alert("Restock failed: " + errMsg(e)); }
   }
 
   async function archiveDrink(id) {
@@ -561,7 +568,7 @@ function StockTab({ barId, role, userId, displayName }) {
       if (error) throw error;
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Archived drink", detail: d.name });
       loadDrinks();
-    } catch (e) { alert("Archive failed: " + e.message); }
+    } catch (e) { alert("Archive failed: " + errMsg(e)); }
   }
 
   const pending = drinks.filter(d => d.price_pending);
@@ -1384,7 +1391,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
       if (error) throw error;
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Deleted archived drink", detail: d.name });
       loadArchived();
-    } catch (e) { alert("Delete failed: " + e.message); }
+    } catch (e) { alert("Delete failed: " + errMsg(e)); }
   }
 
   async function deleteBar() {
@@ -1401,7 +1408,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
       if (barErr) throw barErr;
       alert("Bar deleted.");
       window.location.reload();
-    } catch (e) { alert("Delete failed: " + e.message); setDeleting(false); }
+    } catch (e) { alert("Delete failed: " + errMsg(e)); setDeleting(false); }
   }
 
   async function approveRequest(req) {
