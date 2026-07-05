@@ -12,7 +12,7 @@ const BORDER = "#E5E7EB", INP = "#F2F4F6", SHADOW = "0 2px 10px rgba(0,0,0,0.07)
 const BLUE = "#3B7DD8", PURPLE = "#7C3AED";
 
 const ROLE_COLOR = { supervisor: AMBER, manager: OK, viewer: BLUE };
-const ROLE_LABEL = { supervisor: "Supervisor", manager: "Manager", viewer: "Viewer" };
+const ROLE_LABEL = { supervisor: "Admin", manager: "Manager", viewer: "Viewer" };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = n => "₦" + Number(n || 0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -237,7 +237,7 @@ function OnboardingChoice({ user, onDone }) {
     <div style={wrap}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
       <div style={{ fontFamily: "Georgia,serif", fontSize: 24, color: TXT, marginBottom: 12, textAlign: "center" }}>Request Sent!</div>
-      <div style={{ fontSize: 14, color: MUTED, textAlign: "center", lineHeight: 1.6 }}>Your join request has been sent to the bar Supervisor. You'll be notified once they approve it.</div>
+      <div style={{ fontSize: 14, color: MUTED, textAlign: "center", lineHeight: 1.6 }}>Your join request has been sent to the bar Admin. You'll be notified once they approve it.</div>
     </div>
   );
 
@@ -253,7 +253,7 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ fontSize: 28, width: 48, height: 48, borderRadius: 12, background: TEAL + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>🏪</div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: TXT }}>Create a Bar</div>
-          <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>Set up your bar and become Supervisor</div>
+          <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>Set up your bar and become Admin</div>
         </div>
         <div style={{ marginLeft: "auto", color: MUTED, fontSize: 20 }}>›</div>
       </button>
@@ -273,7 +273,7 @@ function OnboardingChoice({ user, onDone }) {
     <div style={wrap}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: TXT }}>{choice === "create" ? "Create Your Bar" : "Join a Bar"}</div>
-        <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>{choice === "create" ? "You will be assigned as Supervisor" : "Send a request to join"}</div>
+        <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>{choice === "create" ? "You will be assigned as Admin" : "Send a request to join"}</div>
       </div>
       {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
       {choice === "create" ? (
@@ -285,7 +285,7 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ width: "100%", marginBottom: 24 }}>
           <label style={C.lbl}>Bar Code</label>
           <input style={{ ...C.inp, letterSpacing: 3, textTransform: "uppercase" }} placeholder="e.g. QUA-2847" value={barCode} onChange={e => setBarCode(e.target.value)} onKeyDown={e => e.key === "Enter" && joinBar()} />
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>Ask the Supervisor for the bar code</div>
+          <div style={{ fontSize: 11, color: MUTED, marginTop: 5 }}>Ask the Admin for the bar code</div>
         </div>
       )}
       <button onClick={choice === "create" ? createBar : joinBar} disabled={loading} style={{ ...C.btn("primary"), opacity: loading ? 0.6 : 1 }}>
@@ -648,7 +648,7 @@ function StockTab({ barId, role, userId, displayName }) {
 
       {canEdit && pending.length > 0 && (
         <div style={{ background: "#FFFBF0", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER, fontWeight: 500 }}>
-          ⏳ {pending.length} drink{pending.length !== 1 ? "s" : ""} awaiting sell price from Supervisor.
+          ⏳ {pending.length} drink{pending.length !== 1 ? "s" : ""} awaiting sell price from Admin.
         </div>
       )}
 
@@ -706,7 +706,7 @@ function StockTab({ barId, role, userId, displayName }) {
                 {role === "supervisor" ? (
                   <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 90 }} type="number" placeholder="Sell ₦" value={newRow.sell_price} onChange={e => setNewRow(p => ({ ...p, sell_price: e.target.value }))} /></td>
                 ) : (
-                  <td style={{ padding: "8px", color: MUTED, fontSize: 11 }}>Supervisor sets</td>
+                  <td style={{ padding: "8px", color: MUTED, fontSize: 11 }}>Admin sets</td>
                 )}
                 <td colSpan={2} style={C.td()}></td>
                 <td style={{ padding: "8px" }}><button onClick={addDrink} style={{ background: TEAL, color: WHITE, border: "none", borderRadius: 8, padding: "7px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>+ Add</button></td>
@@ -775,7 +775,7 @@ function StockTab({ barId, role, userId, displayName }) {
                   {canPrice ? (
                     <input style={C.inp} type="number" value={editRow.sell_price} onChange={e => setEditRow(p => ({ ...p, sell_price: e.target.value }))} />
                   ) : (
-                    <div style={{ ...C.inp, background: BG, color: MUTED, fontSize: 12, display: "flex", alignItems: "center" }}>Supervisor only</div>
+                    <div style={{ ...C.inp, background: BG, color: MUTED, fontSize: 12, display: "flex", alignItems: "center" }}>Admin only</div>
                   )}
                 </div>
               </div>
@@ -806,7 +806,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
   const [expandedDate, setExpandedDate] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const canLog = role === "manager";
+  const canLog = role === "manager" || role === "supervisor";
   const isLocked = date < today() && role === "manager";
 
   useEffect(() => {
@@ -1003,7 +1003,7 @@ function ExpensesTab({ barId, role, userId }) {
   const [amount, setAmount] = useState("");
   const [err, setErr] = useState("");
 
-  const canAdd = role === "manager";
+  const canAdd = role === "manager" || role === "supervisor";
 
   async function load() {
     const { data } = await supabase.from("expenses").select("*").eq("bar_id", barId).order("expense_date", { ascending: false });
@@ -1430,7 +1430,9 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
   async function removeViewer(memberId) {
     if (!window.confirm("Remove this viewer from the bar?")) return;
+    const member = members.find(m => m.id === memberId);
     await supabase.from("profiles").delete().eq("id", memberId).eq("bar_id", barId);
+    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Member left", detail: (member?.display_name || "A member") + " was removed from the bar" });
     loadData();
   }
 
@@ -1444,7 +1446,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
       const expiresAt = new Date(Date.now() + 24 * 3600000).toISOString();
       await supabase.from("promotion_windows").insert({ bar_id: barId, old_supervisor_id: userId, new_supervisor_id: memberId, expires_at: expiresAt });
       await supabase.from("profiles").update({ role: "supervisor" }).eq("id", memberId).eq("bar_id", barId);
-      alert(member?.display_name + " is now Supervisor. You have 24 hours to cancel this if it was a mistake.");
+      alert(member?.display_name + " is now Admin. You have 24 hours to cancel this if it was a mistake.");
     } else if (newRole === "manager") {
       const currentManager = members.find(m => m.role === "manager");
       if (currentManager) await supabase.from("profiles").update({ role: "viewer" }).eq("id", currentManager.id).eq("bar_id", barId);
@@ -1461,7 +1463,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
     await supabase.from("profiles").update({ role: "viewer" }).eq("id", promotionWindow.new_supervisor_id).eq("bar_id", barId);
     await supabase.from("profiles").update({ role: "supervisor" }).eq("id", userId).eq("bar_id", barId);
     setPromotionWindow(null);
-    alert("Promotion cancelled. You are Supervisor again.");
+    alert("Promotion cancelled. You are Admin again.");
     loadData();
   }
 
@@ -1482,7 +1484,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
       {promotionWindow && (
         <div style={{ background: ERR + "12", border: "1.5px solid " + ERR, borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
           <div style={{ fontWeight: 700, color: ERR, fontSize: 14, marginBottom: 6 }}>You are being demoted to Viewer</div>
-          <div style={{ fontSize: 13, color: TXT, marginBottom: 10 }}>A Supervisor promotion is in progress. You have <strong>{timeLeft}</strong> to cancel.</div>
+          <div style={{ fontSize: 13, color: TXT, marginBottom: 10 }}>An Admin promotion is in progress. You have <strong>{timeLeft}</strong> to cancel.</div>
           <button onClick={cancelPromotion} style={C.btn("err")}>Cancel Promotion</button>
         </div>
       )}
@@ -1535,7 +1537,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
         {supervisor && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid " + BORDER }}>
-            <div><div style={{ fontWeight: 600 }}>{supervisor.display_name}</div><span style={C.tag(AMBER)}>Supervisor</span></div>
+            <div><div style={{ fontWeight: 600 }}>{supervisor.display_name}</div><span style={C.tag(AMBER)}>Admin</span></div>
           </div>
         )}
 
@@ -1546,7 +1548,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
               <select onChange={e => e.target.value && assignRole(manager.id, e.target.value)} defaultValue=""
                 style={{ ...C.inp, width: "auto", padding: "5px 10px", fontSize: 12 }}>
                 <option value="">Reassign</option>
-                <option value="supervisor">Promote to Supervisor</option>
+                <option value="supervisor">Promote to Admin</option>
                 <option value="viewer">Demote to Viewer</option>
               </select>
             )}
@@ -1561,7 +1563,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
                 <select onChange={e => e.target.value && assignRole(v.id, e.target.value)} defaultValue=""
                   style={{ ...C.inp, width: "auto", padding: "5px 10px", fontSize: 12 }}>
                   <option value="">Promote</option>
-                  <option value="supervisor">To Supervisor</option>
+                  <option value="supervisor">To Admin</option>
                   <option value="manager">To Manager</option>
                 </select>
                 <button onClick={() => removeViewer(v.id)} style={{ background: ERR + "18", color: ERR, border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>Remove</button>
@@ -1659,11 +1661,66 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
   const [displayName, setDisplayName] = useState("");
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notifs, setNotifs] = useState([]);
+  const [notifCounts, setNotifCounts] = useState({});
 
   async function loadBars() {
     const { data: profiles } = await supabase.from("profiles").select("*, bars(*)").eq("id", user.id).not("bar_id", "is", null);
-    setBars((profiles || []).filter(p => p.bars));
+    const list = (profiles || []).filter(p => p.bars);
+    setBars(list);
     setLoading(false);
+    loadNotifications(list);
+  }
+
+  async function loadNotifications(list) {
+    try {
+      const barIds = list.map(p => p.bar_id);
+      if (barIds.length === 0) { setNotifs([]); setNotifCounts({}); return; }
+      const roleByBar = {}; const nameByBar = {};
+      list.forEach(p => { roleByBar[p.bar_id] = p.role; nameByBar[p.bar_id] = p.bars?.name; });
+      const since = new Date(Date.now() - 48 * 3600000).toISOString();
+      const [reqRes, drinkRes, logRes, auditRes] = await Promise.all([
+        supabase.from("join_requests").select("bar_id, display_name, status").in("bar_id", barIds).eq("status", "pending"),
+        supabase.from("drinks").select("bar_id, name, quantity, min_quantity, archived").in("bar_id", barIds),
+        supabase.from("stock_logs").select("bar_id, log_type, log_date").in("bar_id", barIds).eq("log_date", today()).eq("log_type", "closing"),
+        supabase.from("audit_logs").select("bar_id, action, detail, created_at").in("bar_id", barIds).gte("created_at", since).order("created_at", { ascending: false })
+      ]);
+      const items = []; const counts = {};
+      const bump = id => { counts[id] = (counts[id] || 0) + 1; };
+      (reqRes.data || []).forEach(r => {
+        if (roleByBar[r.bar_id] === "supervisor") {
+          items.push({ barId: r.bar_id, bar: nameByBar[r.bar_id], icon: "👤", text: (r.display_name || "Someone") + " requested to join", kind: "request" });
+          bump(r.bar_id);
+        }
+      });
+      const lowByBar = {};
+      (drinkRes.data || []).forEach(d => {
+        if (!d.archived && d.quantity <= d.min_quantity) { lowByBar[d.bar_id] = lowByBar[d.bar_id] || []; lowByBar[d.bar_id].push(d.name); }
+      });
+      Object.keys(lowByBar).forEach(bid => {
+        if (roleByBar[bid] === "viewer") return;
+        const names = lowByBar[bid];
+        const text = names.length === 1 ? names[0] + " is running low" : names.length + " drinks are running low (" + names.slice(0, 3).join(", ") + (names.length > 3 ? "..." : "") + ")";
+        items.push({ barId: bid, bar: nameByBar[bid], icon: "📉", text, kind: "stock" });
+        bump(bid);
+      });
+      const loggedBars = new Set((logRes.data || []).map(l => l.bar_id));
+      barIds.forEach(bid => {
+        if (roleByBar[bid] === "viewer") return;
+        if (loggedBars.has(bid)) {
+          items.push({ barId: bid, bar: nameByBar[bid], icon: "✅", text: "Today's closing stock has been logged", kind: "log" });
+        } else {
+          items.push({ barId: bid, bar: nameByBar[bid], icon: "🕗", text: "Closing stock not logged yet today", kind: "log" });
+        }
+      });
+      (auditRes.data || []).forEach(a => {
+        if (a.action === "Member left" && roleByBar[a.bar_id] !== "viewer") {
+          items.push({ barId: a.bar_id, bar: nameByBar[a.bar_id], icon: "🚪", text: a.detail || "A member left the bar", kind: "member" });
+          bump(a.bar_id);
+        }
+      });
+      setNotifs(items); setNotifCounts(counts);
+    } catch (e) { console.error("Notifications failed:", e); }
   }
 
   useEffect(() => { loadBars(); }, []);
@@ -1684,7 +1741,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       if (profErr) {
         // Don't leave an orphan bar behind
         await supabase.from("bars").delete().eq("id", bar.id);
-        throw new Error("Could not create your Supervisor profile: " + profErr.message);
+        throw new Error("Could not create your Admin profile: " + profErr.message);
       }
       setBarName(""); setDisplayName(""); setShowCreate(false);
       loadBars();
@@ -1711,7 +1768,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       const { error: reqErr } = await supabase.from("join_requests").insert({ bar_id: bar.id, user_id: user.id, display_name: name });
       if (reqErr) throw reqErr;
       setBarCode(""); setDisplayName(""); setShowJoin(false);
-      alert("Join request sent! Wait for the Supervisor to approve.");
+      alert("Join request sent! Wait for the Admin to approve.");
     } catch(e) { setErr(e.message); }
     finally { setSaving(false); }
   }
@@ -1745,6 +1802,27 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
           </div>
         </div>
 
+        {/* Notifications */}
+        {notifs.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: MUTED }}>Notifications</div>
+              <button onClick={loadBars} style={{ background: "none", border: "none", color: TEAL, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>↻ Refresh</button>
+            </div>
+            <div style={{ background: WHITE, borderRadius: 16, boxShadow: SHADOW, overflow: "hidden" }}>
+              {notifs.map((n, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderBottom: i < notifs.length - 1 ? "1px solid " + BORDER : "none" }}>
+                  <div style={{ fontSize: 18, lineHeight: 1 }}>{n.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, color: TXT, lineHeight: 1.4 }}>{n.text}</div>
+                    <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{n.bar}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Bar cards */}
         {bars.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 20px", color: MUTED }}>
@@ -1771,6 +1849,9 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
                       <span style={{ fontSize: 11, color: MUTED }}>{p.bars?.bar_code}</span>
                     </div>
                   </div>
+                  {notifCounts[p.bar_id] > 0 && (
+                    <div style={{ minWidth: 20, height: 20, borderRadius: 10, background: ERR, color: WHITE, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", marginLeft: 8 }}>{notifCounts[p.bar_id]}</div>
+                  )}
                   <div style={{ color: MUTED, fontSize: 20, marginLeft: 8 }}>›</div>
                 </button>
               );
@@ -1783,7 +1864,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
           <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div style={{ background: WHITE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Create a Bar</div>
-              <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>You will be assigned as Supervisor</div>
+              <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>You will be assigned as Admin</div>
               {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
               <div style={{ marginBottom: 20 }}>
                 <label style={C.lbl}>Bar Name</label>
