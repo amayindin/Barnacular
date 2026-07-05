@@ -1325,6 +1325,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   const [showArchived, setShowArchived] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [menuMember, setMenuMember] = useState(null);
+  const [menuStage, setMenuStage] = useState("root");
 
   async function loadData() {
     const [{ data: profs }, { data: reqs }, { data: promos }] = await Promise.all([
@@ -1533,45 +1535,83 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
       <div style={C.sec}>Team Members <div style={C.line} /></div>
       <div style={C.card}>
-        <div style={{ fontSize: 12, color: MUTED, marginBottom: 12 }}>Viewers: {viewers.length}/5</div>
-
-        {supervisor && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid " + BORDER }}>
-            <div><div style={{ fontWeight: 600 }}>{supervisor.display_name}</div><span style={C.tag(AMBER)}>Admin</span></div>
-          </div>
-        )}
-
-        {manager && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid " + BORDER }}>
-            <div><div style={{ fontWeight: 600 }}>{manager.display_name}</div><span style={C.tag(OK)}>Manager</span></div>
-            {role === "supervisor" && (
-              <select onChange={e => e.target.value && assignRole(manager.id, e.target.value)} defaultValue=""
-                style={{ ...C.inp, width: "auto", padding: "5px 10px", fontSize: 12 }}>
-                <option value="">Reassign</option>
-                <option value="supervisor">Promote to Admin</option>
-                <option value="viewer">Demote to Viewer</option>
-              </select>
-            )}
-          </div>
-        )}
-
-        {viewers.map(v => (
-          <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid " + BORDER }}>
-            <div><div style={{ fontWeight: 600 }}>{v.display_name}</div><span style={C.tag(BLUE)}>Viewer</span></div>
-            {role === "supervisor" && (
-              <div style={{ display: "flex", gap: 6 }}>
-                <select onChange={e => e.target.value && assignRole(v.id, e.target.value)} defaultValue=""
-                  style={{ ...C.inp, width: "auto", padding: "5px 10px", fontSize: 12 }}>
-                  <option value="">Promote</option>
-                  <option value="supervisor">To Admin</option>
-                  <option value="manager">To Manager</option>
-                </select>
-                <button onClick={() => removeViewer(v.id)} style={{ background: ERR + "18", color: ERR, border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>Remove</button>
-              </div>
-            )}
-          </div>
-        ))}
+        <div style={{ fontSize: 12, color: MUTED, marginBottom: 12 }}>
+          Viewers: {viewers.length}/5{role === "supervisor" ? " · Tap a role badge to manage" : ""}
+        </div>
+        {[...members].sort((a, b) => {
+          const order = { supervisor: 0, manager: 1, viewer: 2 };
+          return (order[a.role] ?? 3) - (order[b.role] ?? 3) || (a.display_name || "").localeCompare(b.display_name || "");
+        }).map(m => {
+          const tagColor = m.role === "supervisor" ? AMBER : m.role === "manager" ? OK : BLUE;
+          const canManage = role === "supervisor" && m.id !== userId;
+          return (
+            <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid " + BORDER }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{m.display_name}{m.id === userId ? " (you)" : ""}</div>
+              <button
+                onClick={() => { if (canManage) { setMenuMember(m); setMenuStage("root"); } }}
+                style={{ ...C.tag(tagColor), border: canManage ? "1.5px solid " + tagColor + "55" : "none", background: tagColor + "18", cursor: canManage ? "pointer" : "default", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                {ROLE_LABEL[m.role] || m.role}{canManage ? " ▾" : ""}
+              </button>
+            </div>
+          );
+        })}
+        {members.length === 0 && <div style={{ fontSize: 13, color: MUTED }}>No members yet.</div>}
       </div>
+
+      {menuMember && (() => {
+        const m = menuMember;
+        const close = () => { setMenuMember(null); setMenuStage("root"); };
+        const act = async (fn) => { close(); await fn(); };
+        const opt = (label, color, fn) => (
+          <button key={label} onClick={() => act(fn)}
+            style={{ display: "block", width: "100%", padding: "14px", background: "none", border: "none", borderBottom: "1px solid " + BORDER, color, fontSize: 15, fontWeight: 600, cursor: "pointer", textAlign: "center" }}>
+            {label}
+          </button>
+        );
+        let options = [];
+        if (menuStage === "root") {
+          if (m.role === "viewer") {
+            options = [
+              opt("Promote", TEAL, async () => { setMenuMember(m); setMenuStage("promote"); }),
+              opt("Remove from bar", ERR, () => removeViewer(m.id))
+            ];
+          } else if (m.role === "manager") {
+            options = [
+              opt("Promote", TEAL, async () => { setMenuMember(m); setMenuStage("promote"); }),
+              opt("Demote", AMBER, async () => { setMenuMember(m); setMenuStage("demote"); })
+            ];
+          }
+        } else if (menuStage === "promote") {
+          options = m.role === "viewer" ? [
+            opt("To Manager", OK, () => assignRole(m.id, "manager")),
+            opt("To Admin", AMBER, () => assignRole(m.id, "supervisor"))
+          ] : [
+            opt("To Admin", AMBER, () => assignRole(m.id, "supervisor"))
+          ];
+        } else if (menuStage === "demote") {
+          options = [
+            opt("To Viewer", BLUE, () => assignRole(m.id, "viewer")),
+            opt("Remove from bar", ERR, () => removeViewer(m.id))
+          ];
+        }
+        return (
+          <div onClick={close} style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: WHITE, borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, paddingBottom: 24 }}>
+              <div style={{ padding: "18px 20px 12px", borderBottom: "1px solid " + BORDER }}>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{m.display_name}</div>
+                <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                  {ROLE_LABEL[m.role]}{menuStage === "promote" ? " → Promote to..." : menuStage === "demote" ? " → Demote to..." : ""}
+                </div>
+              </div>
+              {options}
+              <button onClick={menuStage === "root" ? close : () => setMenuStage("root")}
+                style={{ display: "block", width: "100%", padding: "14px", background: "none", border: "none", color: MUTED, fontSize: 14, cursor: "pointer", textAlign: "center" }}>
+                {menuStage === "root" ? "Cancel" : "← Back"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {role === "supervisor" && (
         <>
