@@ -211,7 +211,9 @@ function OnboardingChoice({ user, onDone }) {
     if (!barCode.trim()) { setErr("Please enter a bar code."); return; }
     setLoading(true); setErr("");
     try {
-      const { data: bar, error: barErr } = await supabase.from("bars").select("*").eq("bar_code", barCode.trim().toUpperCase()).single();
+      const raw = barCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const code = raw.slice(0, 3) + "-" + raw.slice(3);
+      const { data: bar, error: barErr } = await supabase.from("bars").select("*").eq("bar_code", code).single();
       if (barErr || !bar) throw new Error("Bar not found. Please check the code and try again.");
       // Check viewer slots
       const { data: viewers } = await supabase.from("profiles").select("id").eq("bar_id", bar.id).eq("role", "viewer");
@@ -1695,7 +1697,9 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
     if (joinedCount >= 5) { setErr("You are currently at your bar limit."); return; }
     setSaving(true); setErr("");
     try {
-      const { data: bar, error: barErr } = await supabase.from("bars").select("*").eq("bar_code", barCode.trim().toUpperCase()).single();
+      const raw = barCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const code = raw.slice(0, 3) + "-" + raw.slice(3);
+      const { data: bar, error: barErr } = await supabase.from("bars").select("*").eq("bar_code", code).single();
       if (barErr || !bar) throw new Error("Bar not found. Check the code and try again.");
       const already = bars.find(p => p.bar_id === bar.id);
       if (already) throw new Error("You are already part of this bar.");
