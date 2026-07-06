@@ -5,11 +5,19 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-const TEAL = "#1B3A4B", AMBER = "#C8861A", WHITE = "#FFFFFF", BG = "#F6F7F9";
-const TXT = "#1A1A1A", MUTED = "#8A8A8A", OK = "#27AE60", ERR = "#E03131";
-const BORDER = "#E5E7EB", INP = "#F2F4F6", SHADOW = "0 2px 10px rgba(0,0,0,0.07)";
-const BLUE = "#3B7DD8", PURPLE = "#7C3AED";
+// ── Palette: "after-hours brass" — a bar at night, teal shadows lit by whiskey gold ──
+const TEAL = "#4FB8D6";                 // lagoon teal — the brand accent, now luminous
+const AMBER = "#E3A93C";                // whiskey gold — brass, bottles, backbar light
+const WHITE = "#FFFFFF";                // reserved for text on colored buttons
+const SURFACE = "#162126";              // raised card surface, teal-charcoal
+const BG = "#0E1518";                   // deep night base
+const TXT = "#F2EFE8";                  // warm off-white, like light through a glass
+const MUTED = "#8A9BA3";                // teal-grey for secondary text
+const OK = "#3DCB7D", ERR = "#F0564F";
+const BORDER = "#243239", INP = "#1D2B31";
+const SHADOW = "0 4px 18px rgba(0,0,0,0.45)";
+const BLUE = "#5B9BE6", PURPLE = "#9F7AEA";
+const HDR = "linear-gradient(150deg, #0F2A35 0%, #14404E 100%)"; // deep teal header
 
 const ROLE_COLOR = { supervisor: AMBER, manager: OK, viewer: BLUE };
 const ROLE_LABEL = { supervisor: "Admin", manager: "Manager", viewer: "Viewer" };
@@ -46,13 +54,13 @@ function num(val, allowFloat = true) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const C = {
-  card: { background: WHITE, border: "1px solid " + BORDER, borderRadius: 16, padding: "14px 15px", marginBottom: 12, boxShadow: SHADOW },
+  card: { background: SURFACE, border: "1px solid " + BORDER, borderRadius: 16, padding: "14px 15px", marginBottom: 12, boxShadow: SHADOW },
   inp: { width: "100%", background: INP, border: "1px solid " + BORDER, borderRadius: 10, color: TXT, padding: "11px 13px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" },
   lbl: { fontSize: 11, fontWeight: 600, color: MUTED, marginBottom: 5, display: "block" },
   btn: (v = "primary") => ({
     width: "100%", padding: "13px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
     background: v === "primary" ? TEAL : v === "amber" ? AMBER : v === "ok" ? OK : v === "err" ? ERR : v === "ghost" ? "transparent" : v === "google" ? WHITE : INP,
-    color: v === "ghost" ? MUTED : v === "google" ? TXT : WHITE,
+    color: v === "ghost" ? MUTED : v === "google" ? TXT : v === "primary" || v === "amber" || v === "ok" ? "#0E1518" : WHITE,
     border: v === "ghost" ? "1px solid " + BORDER : v === "google" ? "1px solid " + BORDER : "none",
     boxShadow: v === "google" ? SHADOW : "none",
   }),
@@ -64,15 +72,15 @@ const C = {
   div: { height: 1, background: BORDER, margin: "10px 0" },
   tag: c => ({ display: "inline-block", background: c + "18", color: c, borderRadius: 20, fontSize: 10, fontWeight: 700, padding: "3px 9px" }),
   empty: { textAlign: "center", color: MUTED, padding: "40px 14px", fontSize: 13 },
-  tw: { overflowX: "auto", borderRadius: 12, border: "1px solid " + BORDER, background: WHITE, marginBottom: 14, boxShadow: SHADOW },
-  th: c => ({ padding: "9px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: c || MUTED, background: "#F5F7F9", borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", textAlign: "left" }),
+  tw: { overflowX: "auto", borderRadius: 12, border: "1px solid " + BORDER, background: SURFACE, marginBottom: 14, boxShadow: SHADOW },
+  th: c => ({ padding: "9px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: c || MUTED, background: "#1A272D", borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", textAlign: "left" }),
   td: c => ({ padding: "10px 11px", fontSize: 13, color: c || TXT, borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", verticalAlign: "middle" }),
 };
 
 // ── Loading ───────────────────────────────────────────────────────────────────
 function LoadingScreen() {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: WHITE, fontFamily: "Georgia,serif" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: BG, fontFamily: "'Fraunces',Georgia,serif" }}>
       <div style={{ fontSize: 36, fontWeight: 400, color: TXT, marginBottom: 20 }}>Barnakular</div>
       <div style={{ width: 32, height: 32, border: "3px solid " + BORDER, borderTopColor: TEAL, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
       <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
@@ -118,13 +126,13 @@ function AuthScreen({ onAuth }) {
     } catch (e) { console.error("Auth error:", e); setErr(errMsg(e)); setLoading(false); }
   }
 
-  const wrap = { minHeight: "100vh", background: WHITE, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 36px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" };
+  const wrap = { minHeight: "100vh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 36px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" };
 
   if (mode === "landing") return (
     <div style={wrap}>
       <div style={{ marginBottom: 48, textAlign: "center" }}>
         <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 8 }} />
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 46, fontWeight: 400, color: TXT, letterSpacing: -1 }}>Barnakular</div>
+        <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 46, fontWeight: 400, color: TXT, letterSpacing: -1 }}>Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>Bar Management System</div>
       </div>
       <button onClick={() => setMode("signup")} style={{ ...C.btn("primary"), marginBottom: 12 }}>Create Account</button>
@@ -136,7 +144,7 @@ function AuthScreen({ onAuth }) {
     <div style={wrap}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 8 }} />
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 36, fontWeight: 400, color: TXT }}>Barnakular</div>
+        <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 36, fontWeight: 400, color: TXT }}>Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{mode === "login" ? "Welcome back" : "Create your account"}</div>
       </div>
 
@@ -231,12 +239,12 @@ function OnboardingChoice({ user, onDone }) {
     finally { setLoading(false); }
   }
 
-  const wrap = { minHeight: "100vh", background: WHITE, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 28px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" };
+  const wrap = { minHeight: "100vh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 28px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" };
 
   if (requested) return (
     <div style={wrap}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-      <div style={{ fontFamily: "Georgia,serif", fontSize: 24, color: TXT, marginBottom: 12, textAlign: "center" }}>Request Sent!</div>
+      <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 24, color: TXT, marginBottom: 12, textAlign: "center" }}>Request Sent!</div>
       <div style={{ fontSize: 14, color: MUTED, textAlign: "center", lineHeight: 1.6 }}>Your join request has been sent to the bar Admin. You'll be notified once they approve it.</div>
     </div>
   );
@@ -245,11 +253,11 @@ function OnboardingChoice({ user, onDone }) {
     <div style={wrap}>
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🍺</div>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 28, color: TXT, marginBottom: 8 }}>Welcome to Barnakular</div>
+        <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 28, color: TXT, marginBottom: 8 }}>Welcome to Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED }}>What would you like to do?</div>
       </div>
       <button onClick={() => setChoice("create")}
-        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", marginBottom: 12, background: WHITE, border: "1.5px solid " + TEAL, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
+        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", marginBottom: 12, background: SURFACE, border: "1.5px solid " + TEAL, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
         <div style={{ fontSize: 28, width: 48, height: 48, borderRadius: 12, background: TEAL + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>🏪</div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: TXT }}>Create a Bar</div>
@@ -258,7 +266,7 @@ function OnboardingChoice({ user, onDone }) {
         <div style={{ marginLeft: "auto", color: MUTED, fontSize: 20 }}>›</div>
       </button>
       <button onClick={() => setChoice("join")}
-        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", background: WHITE, border: "1.5px solid " + BORDER, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
+        style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "18px", background: SURFACE, border: "1.5px solid " + BORDER, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW }}>
         <div style={{ fontSize: 28, width: 48, height: 48, borderRadius: 12, background: BLUE + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>🔗</div>
         <div style={{ textAlign: "left" }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: TXT }}>Join a Bar</div>
@@ -272,7 +280,7 @@ function OnboardingChoice({ user, onDone }) {
   return (
     <div style={wrap}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: TXT }}>{choice === "create" ? "Create Your Bar" : "Join a Bar"}</div>
+        <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 26, color: TXT }}>{choice === "create" ? "Create Your Bar" : "Join a Bar"}</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>{choice === "create" ? "You will be assigned as Admin" : "Send a request to join"}</div>
       </div>
       {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
@@ -328,10 +336,10 @@ function JoinViaInvite({ user, token, onDone }) {
 
   if (loading) return <LoadingScreen />;
   return (
-    <div style={{ minHeight: "100vh", background: WHITE, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 28px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: SURFACE, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 28px", maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
       <div style={{ textAlign: "center", marginBottom: 36 }}>
         <div style={{ fontSize: 40 }}>🍺</div>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: 26, color: TXT, marginTop: 8 }}>You've been invited</div>
+        <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 26, color: TXT, marginTop: 8 }}>You've been invited</div>
         {invite && <div style={{ fontSize: 14, color: MUTED, marginTop: 8 }}>Join <strong style={{ color: TXT }}>{invite.bars?.name}</strong> as <span style={C.tag(ROLE_COLOR[invite.role] || BLUE)}>{ROLE_LABEL[invite.role] || invite.role}</span></div>}
       </div>
       {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 14, width: "100%" }}>{err}</div>}
@@ -601,7 +609,7 @@ function StockTab({ barId, role, userId, displayName }) {
       )}
 
       {lowItems.length > 0 && (
-        <div style={{ background: "#FFF5F5", border: "1px solid " + ERR + "33", borderRadius: 14, padding: "13px 15px", marginBottom: 14 }}>
+        <div style={{ background: ERR + "14", border: "1px solid " + ERR + "33", borderRadius: 14, padding: "13px 15px", marginBottom: 14 }}>
           <div style={{ fontWeight: 700, color: ERR, fontSize: 13, marginBottom: 8 }}>⚠ Low Stock Alert</div>
           {lowItems.map(d => (
             <div key={d.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
@@ -633,7 +641,7 @@ function StockTab({ barId, role, userId, displayName }) {
                 </div>
               ) : (
                 <button onClick={() => { setPriceId(d.id); setPriceData({}); setErr(""); }}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "14px 16px", marginBottom: 8, background: WHITE, border: "1.5px solid " + AMBER + "55", borderRadius: 14, cursor: "pointer", boxShadow: SHADOW }}>
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "14px 16px", marginBottom: 8, background: SURFACE, border: "1.5px solid " + AMBER + "55", borderRadius: 14, cursor: "pointer", boxShadow: SHADOW }}>
                   <div style={{ textAlign: "left" }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: TXT }}>{d.name}</div>
                     <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Buy: {fmt(d.buy_price)} · Tap to set sell price</div>
@@ -647,14 +655,23 @@ function StockTab({ barId, role, userId, displayName }) {
       )}
 
       {canEdit && pending.length > 0 && (
-        <div style={{ background: "#FFFBF0", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER, fontWeight: 500 }}>
+        <div style={{ background: AMBER + "14", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER, fontWeight: 500 }}>
           ⏳ {pending.length} drink{pending.length !== 1 ? "s" : ""} awaiting sell price from Admin.
         </div>
       )}
 
-      {err && !priceId && <div style={{ background: "#FFF5F5", border: "1px solid " + ERR + "44", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 12 }}>{err}</div>}
+      {err && !priceId && <div style={{ background: ERR + "14", border: "1px solid " + ERR + "44", borderRadius: 10, color: ERR, fontSize: 13, padding: "11px 14px", marginBottom: 12 }}>{err}</div>}
 
       <div style={C.sec}>Stock Register <div style={C.line} /></div>
+      {drinks.length === 0 && canEdit && (
+        <div style={{ ...C.card, border: "1.5px solid " + AMBER + "55", textAlign: "center", padding: "22px 18px" }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🍾</div>
+          <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 18, color: TXT, marginBottom: 8 }}>Count your stock</div>
+          <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
+            Welcome! Walk the bar and add every drink with the <strong style={{ color: AMBER }}>quantity currently on ground</strong>. That first count becomes your opening stock — every report builds on it.
+          </div>
+        </div>
+      )}
 
       <div style={C.tw}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 400 }}>
@@ -670,7 +687,7 @@ function StockTab({ barId, role, userId, displayName }) {
           </tr></thead>
           <tbody>
             {drinks.length === 0 && (
-              <tr><td colSpan={8} style={{ ...C.td(), textAlign: "center", color: MUTED, padding: "24px 0" }}>No drinks yet{canEdit ? " — add below ↓" : "."}</td></tr>
+              <tr><td colSpan={8} style={{ ...C.td(), textAlign: "center", color: MUTED, padding: "24px 0" }}>No drinks yet{canEdit ? " — count your stock below ↓" : "."}</td></tr>
             )}
             {drinks.map(d => {
               const isLow = d.quantity <= d.min_quantity;
@@ -698,7 +715,7 @@ function StockTab({ barId, role, userId, displayName }) {
               );
             })}
             {canEdit && (
-              <tr style={{ background: "#F5F7F9" }}>
+              <tr style={{ background: "#1A272D" }}>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12 }} placeholder="Drink name" value={newRow.name} onChange={e => setNewRow(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === "Enter" && addDrink()} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 70 }} type="number" placeholder="Qty" value={newRow.quantity} onChange={e => setNewRow(p => ({ ...p, quantity: e.target.value }))} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 54 }} type="number" placeholder="Min" value={newRow.min_quantity} onChange={e => setNewRow(p => ({ ...p, min_quantity: e.target.value }))} /></td>
@@ -729,8 +746,8 @@ function StockTab({ barId, role, userId, displayName }) {
       {restockId && (() => {
         const d = drinks.find(x => x.id === restockId);
         return (
-          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-            <div style={{ background: WHITE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
+          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{ background: SURFACE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>Restock — {d?.name}</div>
               <label style={C.lbl}>Units to Add</label>
               <input style={{ ...C.inp, marginBottom: 16 }} type="number" value={restockQty} onChange={e => setRestockQty(e.target.value)} placeholder="e.g. 12" autoFocus />
@@ -747,8 +764,8 @@ function StockTab({ barId, role, userId, displayName }) {
         const d = drinks.find(x => x.id === editId);
         if (!d) return null;
         return (
-          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ background: WHITE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 360, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
+          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ background: SURFACE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 360, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Edit — {d.name}</div>
               <div style={{ fontSize: 12, color: MUTED, marginBottom: 16 }}>All changes are recorded in the audit log.</div>
               <div style={{ marginBottom: 11 }}>
@@ -796,6 +813,9 @@ function StockTab({ barId, role, userId, displayName }) {
 function DailyLogTab({ barId, role, userId, displayName }) {
   const [drinks, setDrinks] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [restocks, setRestocks] = useState([]);
+  const [cashRecords, setCashRecords] = useState([]);
+  const [barMeta, setBarMeta] = useState(null);
   const [date, setDate] = useState(today());
   const [recorderName, setRecorderName] = useState(displayName);
   const [closeEnt, setCloseEnt] = useState({});
@@ -805,22 +825,62 @@ function DailyLogTab({ barId, role, userId, displayName }) {
   const [saving, setSaving] = useState(false);
   const [expandedDate, setExpandedDate] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [autoClosedNote, setAutoClosedNote] = useState(false);
 
   const canLog = role === "manager" || role === "supervisor";
-  const isLocked = date < today() && role === "manager";
+
+  // Auto-closed days stay editable for a window the Admin chooses (24h/48h)
+  function dayAutoClosed(d) {
+    const dayCloses = logs.filter(l => l.log_date === d && l.log_type === "closing");
+    return dayCloses.length > 0 && dayCloses.every(l => l.auto_closed);
+  }
+  function withinEditWindow(d) {
+    const closeLog = logs.find(l => l.log_date === d && l.log_type === "closing" && l.auto_closed);
+    if (!closeLog || !closeLog.created_at) return false;
+    const windowH = barMeta?.edit_window_hours || 24;
+    return Date.now() - new Date(closeLog.created_at).getTime() < windowH * 3600000;
+  }
+  const isLocked = date < today() && !(role === "supervisor") && !(dayAutoClosed(date) && withinEditWindow(date));
 
   useEffect(() => {
     async function load() {
-      const [{ data: drinksData }, { data: logsData }] = await Promise.all([
+      const [{ data: drinksData }, { data: logsData }, { data: restockData }, { data: cashData }, { data: barData }] = await Promise.all([
         supabase.from("drinks").select("*").eq("bar_id", barId).eq("archived", false).order("name"),
-        supabase.from("stock_logs").select("*").eq("bar_id", barId).order("log_date", { ascending: false })
+        supabase.from("stock_logs").select("*").eq("bar_id", barId).order("log_date", { ascending: false }),
+        supabase.from("restocks").select("*").eq("bar_id", barId),
+        supabase.from("cash_records").select("*").eq("bar_id", barId),
+        supabase.from("bars").select("edit_window_hours").eq("id", barId).single()
       ]);
-      setDrinks(drinksData || []); setLogs(logsData || []); setLoading(false);
+      setDrinks(drinksData || []); setLogs(logsData || []); setRestocks(restockData || []);
+      setCashRecords(cashData || []); setBarMeta(barData || null); setLoading(false);
+      if (canLog) autoCloseIfNeeded(drinksData || [], logsData || []);
     }
     load();
     const sub = supabase.channel("logs-" + barId).on("postgres_changes", { event: "*", schema: "public", table: "stock_logs", filter: "bar_id=eq." + barId }, load).subscribe();
     return () => supabase.removeChannel(sub);
   }, [barId, reloadKey]);
+
+  // If yesterday was never closed, close it automatically from live quantities
+  async function autoCloseIfNeeded(drinksData, logsData) {
+    const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (drinksData.length === 0) return;
+    const hasHistoryBefore = logsData.some(l => l.log_date < y) || restocksExistedBefore(y);
+    const yClosings = logsData.filter(l => l.log_date === y && l.log_type === "closing");
+    if (yClosings.length > 0 || !hasHistoryBefore) return;
+    const already = sessionStorage.getItem("autoclosed-" + barId + "-" + y);
+    if (already) return;
+    sessionStorage.setItem("autoclosed-" + barId + "-" + y, "1");
+    for (const d of drinksData) {
+      const prev = logsData.filter(l => l.drink_id === d.id && l.log_type === "closing" && l.log_date < y).sort((a, b) => b.log_date.localeCompare(a.log_date))[0];
+      const opening = prev ? prev.closing_qty : d.quantity;
+      await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: y, opening_qty: opening, log_type: "opening", recorded_by: "System (auto)" });
+      await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: y, closing_qty: d.quantity, log_type: "closing", recorded_by: "System (auto)", auto_closed: true });
+    }
+    await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Day auto-closed", detail: y + " was closed automatically from live stock" });
+    setAutoClosedNote(true);
+    setReloadKey(k => k + 1);
+  }
+  function restocksExistedBefore(d) { return restocks.some(r => r.restock_date < d); }
 
   function getOpening(drinkId) {
     const prev = logs.filter(l => l.drink_id === drinkId && l.log_type === "closing" && l.log_date < date).sort((a, b) => b.log_date.localeCompare(a.log_date))[0];
@@ -829,6 +889,10 @@ function DailyLogTab({ barId, role, userId, displayName }) {
 
   function getClosing(drinkId) {
     return logs.find(l => l.drink_id === drinkId && l.log_type === "closing" && l.log_date === date)?.closing_qty ?? null;
+  }
+
+  function getRestocked(drinkId, d) {
+    return restocks.filter(r => r.drink_id === drinkId && r.restock_date === d).reduce((s, r) => s + r.quantity, 0);
   }
 
   async function saveClosing() {
@@ -840,7 +904,8 @@ function DailyLogTab({ barId, role, userId, displayName }) {
       const n = num(val, false);
       if (n === null) { alert("Invalid closing quantity for " + d.name + ". Enter a non-negative whole number."); return; }
       const opening = getOpening(d.id);
-      if (opening !== null && n > opening && !window.confirm(d.name + ": closing (" + n + ") is higher than opening (" + opening + "). Save anyway?")) return;
+      const avail = opening !== null ? opening + getRestocked(d.id, date) : null;
+      if (avail !== null && n > avail && !window.confirm(d.name + ": closing (" + n + ") is higher than opening + restocks (" + avail + "). Save anyway?")) return;
     }
     setSaving(true);
     try {
@@ -851,7 +916,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
         const existingOpen = logs.find(l => l.drink_id === d.id && l.log_type === "opening" && l.log_date === date);
         if (!existingOpen) await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: date, opening_qty: opening, log_type: "opening", recorded_by: recorderName });
         const existingClose = logs.find(l => l.drink_id === d.id && l.log_type === "closing" && l.log_date === date);
-        if (existingClose) await supabase.from("stock_logs").update({ closing_qty: parseFloat(val), recorded_by: recorderName }).eq("id", existingClose.id);
+        if (existingClose) await supabase.from("stock_logs").update({ closing_qty: parseFloat(val), recorded_by: recorderName, auto_closed: false }).eq("id", existingClose.id);
         else await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: date, closing_qty: parseFloat(val), log_type: "closing", recorded_by: recorderName });
       }
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Saved closing stock", detail: "for " + date });
@@ -885,7 +950,9 @@ function DailyLogTab({ barId, role, userId, displayName }) {
           </div>
         )}
       </div>
-      {isLocked && <div style={{ background: "#FFF5F5", border: "1px solid " + ERR + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: ERR }}>🔒 Past records are locked.</div>}
+      {isLocked && <div style={{ background: ERR + "14", border: "1px solid " + ERR + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: ERR }}>🔒 Past records are locked. Auto-closed days stay editable for {barMeta?.edit_window_hours || 24}h.</div>}
+      {!isLocked && date < today() && dayAutoClosed(date) && <div style={{ background: AMBER + "14", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER }}>⚠ This day was auto-closed from live stock. You can correct the figures within {barMeta?.edit_window_hours || 24} hours.</div>}
+      {autoClosedNote && <div style={{ background: AMBER + "14", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "11px 14px", marginBottom: 13, fontSize: 13, color: AMBER }}>⚠ Yesterday was not closed, so it has been auto-closed using live stock. Select the date to review the figures.</div>}
       {drinks.length === 0 ? <div style={C.empty}>No drinks in stock register.</div> : (
         <>
           <div style={C.tw}>
@@ -893,19 +960,22 @@ function DailyLogTab({ barId, role, userId, displayName }) {
               <thead><tr>
                 <th style={C.th()}>Drink</th>
                 <th style={C.th(OK)}>Opening</th>
+                <th style={C.th(AMBER)}>+Restock</th>
                 <th style={C.th(TEAL)}>Closing</th>
                 <th style={C.th()}>Sold</th>
               </tr></thead>
               <tbody>{drinks.map(d => {
                 const opening = getOpening(d.id);
+                const restocked = getRestocked(d.id, date);
                 const closing = getClosing(d.id);
-                const sold = opening !== null && closing !== null ? Math.max(0, opening - closing) : null;
+                const sold = opening !== null && closing !== null ? Math.max(0, opening + restocked - closing) : null;
                 return (
                   <tr key={d.id}>
                     <td style={{ ...C.td(), fontWeight: 600 }}>{d.name}</td>
                     <td style={{ ...C.td(), fontFamily: "monospace", color: OK, fontWeight: 600 }}>
                       {opening !== null ? opening : <span style={{ color: MUTED }}>—</span>}
                     </td>
+                    <td style={{ ...C.td(), fontFamily: "monospace", color: restocked > 0 ? AMBER : MUTED }}>{restocked > 0 ? "+" + restocked : "—"}</td>
                     <td style={C.td(TEAL)}>
                       {canLog && !isLocked ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -946,43 +1016,79 @@ function DailyLogTab({ barId, role, userId, displayName }) {
         const dayLogs = logs.filter(l => l.log_date === d);
         const closingLogs = dayLogs.filter(l => l.log_type === "closing");
         const recorder = closingLogs[0]?.recorded_by;
+        const isAuto = closingLogs.length > 0 && closingLogs.every(l => l.auto_closed);
+        const dayCashRec = cashRecords.find(c => c.record_date === d);
+        let dayRev = 0, daySold = 0;
+        drinks.forEach(drink => {
+          const o = dayLogs.find(l => l.drink_id === drink.id && l.log_type === "opening")?.opening_qty;
+          const c = dayLogs.find(l => l.drink_id === drink.id && l.log_type === "closing")?.closing_qty;
+          if (o !== undefined && c !== undefined) {
+            const sold = Math.max(0, o + getRestocked(drink.id, d) - c);
+            daySold += sold; dayRev += sold * drink.sell_price;
+          }
+        });
+        const variance = dayCashRec ? Number(dayCashRec.amount) - dayRev : null;
         return (
           <div key={d} style={C.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <button onClick={() => setExpandedDate(expandedDate === d ? null : d)}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: TEAL }}>{fmtDate(d)}</div>
                 {recorder && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Recorded by {recorder}</div>}
               </div>
-              <span style={C.tag(closingLogs.length > 0 ? OK : MUTED)}>{closingLogs.length > 0 ? "✓ Complete" : "Incomplete"}</span>
-            </div>
-            <button onClick={() => setExpandedDate(expandedDate === d ? null : d)}
-              style={{ marginTop: 10, width: "100%", background: "none", border: "1px solid " + BORDER, borderRadius: 8, color: MUTED, fontSize: 11, padding: "6px", cursor: "pointer" }}>
-              {expandedDate === d ? "▲ Hide" : "▼ View Breakdown"}
+              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                {isAuto && <span style={C.tag(AMBER)}>Auto-closed</span>}
+                <span style={C.tag(closingLogs.length > 0 ? OK : MUTED)}>{closingLogs.length > 0 ? "✓ Complete" : "Incomplete"}</span>
+                <span style={{ color: MUTED, fontSize: 14 }}>{expandedDate === d ? "▲" : "▼"}</span>
+              </div>
             </button>
             {expandedDate === d && (
-              <div style={{ ...C.tw, marginTop: 10, marginBottom: 0 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 260 }}>
-                  <thead><tr>
-                    <th style={C.th()}>Drink</th>
-                    <th style={C.th(OK)}>Opening</th>
-                    <th style={C.th(TEAL)}>Closing</th>
-                    <th style={C.th()}>Sold</th>
-                  </tr></thead>
-                  <tbody>{drinks.map(drink => {
-                    const o = dayLogs.find(l => l.drink_id === drink.id && l.log_type === "opening")?.opening_qty;
-                    const c = dayLogs.find(l => l.drink_id === drink.id && l.log_type === "closing")?.closing_qty;
-                    const sold = o !== undefined && c !== undefined ? Math.max(0, o - c) : null;
-                    return (
-                      <tr key={drink.id}>
-                        <td style={{ ...C.td(), fontWeight: 600 }}>{drink.name}</td>
-                        <td style={C.td(OK)}>{o ?? "—"}</td>
-                        <td style={C.td(TEAL)}>{c ?? "—"}</td>
-                        <td style={{ ...C.td(), fontFamily: "monospace", fontWeight: 700 }}>{sold ?? "—"}</td>
-                      </tr>
-                    );
-                  })}</tbody>
-                </table>
-              </div>
+              <>
+                <div style={{ ...C.tw, marginTop: 12 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 300 }}>
+                    <thead><tr>
+                      <th style={C.th()}>Drink</th>
+                      <th style={C.th(OK)}>Opening</th>
+                      <th style={C.th(AMBER)}>+Restock</th>
+                      <th style={C.th(TEAL)}>Closing</th>
+                      <th style={C.th()}>Sold</th>
+                    </tr></thead>
+                    <tbody>{drinks.map(drink => {
+                      const o = dayLogs.find(l => l.drink_id === drink.id && l.log_type === "opening")?.opening_qty;
+                      const c = dayLogs.find(l => l.drink_id === drink.id && l.log_type === "closing")?.closing_qty;
+                      const rs = getRestocked(drink.id, d);
+                      const sold = o !== undefined && c !== undefined ? Math.max(0, o + rs - c) : null;
+                      return (
+                        <tr key={drink.id}>
+                          <td style={{ ...C.td(), fontWeight: 600 }}>{drink.name}</td>
+                          <td style={C.td(OK)}>{o ?? "—"}</td>
+                          <td style={{ ...C.td(), color: rs > 0 ? AMBER : MUTED }}>{rs > 0 ? "+" + rs : "—"}</td>
+                          <td style={C.td(TEAL)}>{c ?? "—"}</td>
+                          <td style={{ ...C.td(), fontFamily: "monospace", fontWeight: 700 }}>{sold ?? "—"}</td>
+                        </tr>
+                      );
+                    })}</tbody>
+                  </table>
+                </div>
+                {role !== "manager" && (
+                  <div style={{ background: INP, borderRadius: 12, padding: "12px 14px" }}>
+                    <div style={C.row}><span style={C.slbl}>Units Sold</span><span style={C.sval()}>{daySold}</span></div>
+                    <div style={C.row}><span style={C.slbl}>Expected Revenue</span><span style={C.sval(TEAL)}>{fmt(dayRev)}</span></div>
+                    <div style={C.row}><span style={C.slbl}>Cash Collected</span><span style={C.sval(OK)}>{dayCashRec ? fmt(dayCashRec.amount) : "—"}</span></div>
+                    {variance !== null && (
+                      <div style={{ ...C.row, marginBottom: 0, paddingTop: 8, borderTop: "1px solid " + BORDER }}>
+                        <span style={{ ...C.slbl, fontWeight: 700 }}>{variance >= 0 ? "Over / Matched" : "Cash Short"}</span>
+                        <span style={C.sval(variance >= 0 ? OK : ERR)}>{variance >= 0 ? "+" : "−"}{fmt(Math.abs(variance))}</span>
+                      </div>
+                    )}
+                    {isAuto && <div style={{ fontSize: 11, color: AMBER, marginTop: 8 }}>⚠ Figures estimated from live stock — this day was auto-closed.</div>}
+                  </div>
+                )}
+                {canLog && dayAutoClosed(d) && withinEditWindow(d) && (
+                  <button onClick={() => { setDate(d); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    style={{ ...C.btn("amber"), marginTop: 10 }}>✎ Correct This Day's Figures</button>
+                )}
+              </>
             )}
           </div>
         );
@@ -1018,7 +1124,10 @@ function ExpensesTab({ barId, role, userId }) {
 
   async function add() {
     if (!desc.trim() || !amount) { setErr("Fill in all fields."); return; }
-    await supabase.from("expenses").insert({ bar_id: barId, category, description: sanitise(desc, 200), amount: parseFloat(amount), expense_date: date, created_by: userId });
+    const amt = num(amount);
+    if (amt === null || amt <= 0) { setErr("Enter a valid amount greater than zero."); return; }
+    const { error } = await supabase.from("expenses").insert({ bar_id: barId, category, description: sanitise(desc, 200), amount: amt, expense_date: date, created_by: userId });
+    if (error) { setErr("Could not save expense: " + errMsg(error)); return; }
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Added expense", detail: category + ": " + desc });
     setDesc(""); setAmount(""); setErr("");
     load();
@@ -1030,7 +1139,7 @@ function ExpensesTab({ barId, role, userId }) {
   return (
     <div>
       <div style={C.sec}>Expenses <div style={C.line} /></div>
-      {role === "supervisor" && <div style={{ background: "#FFFBF0", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: AMBER, fontWeight: 500 }}>👁 Viewing all expense records. Only Managers can add expenses.</div>}
+      {role === "supervisor" && <div style={{ background: AMBER + "14", border: "1px solid " + AMBER + "33", borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: AMBER, fontWeight: 500 }}>👁 Viewing all expense records.</div>}
       {role === "viewer" && <div style={{ background: BLUE + "12", border: "1px solid " + BLUE + "33", borderRadius: 12, padding: "10px 14px", marginBottom: 13, fontSize: 12, color: BLUE, fontWeight: 500 }}>👁 You are viewing expense records as a Viewer.</div>}
       {canAdd && (
         <div style={C.card}>
@@ -1099,8 +1208,11 @@ function ReportTab({ barId, role }) {
         const dayLogs = {};
         filterLogs.filter(l => l.drink_id === d.id).forEach(l => { if (!dayLogs[l.log_date]) dayLogs[l.log_date] = {}; dayLogs[l.log_date][l.log_type] = l; });
         let sold = 0, lastClose = null;
-        Object.values(dayLogs).forEach(day => {
-          if (day.opening && day.closing) { sold += Math.max(0, day.opening.opening_qty - day.closing.closing_qty); }
+        Object.entries(dayLogs).forEach(([dDate, day]) => {
+          if (day.opening && day.closing) {
+            const restocked = filterRestocks.filter(r => r.drink_id === d.id && r.restock_date === dDate).reduce((sum, r) => sum + r.quantity, 0);
+            sold += Math.max(0, day.opening.opening_qty + restocked - day.closing.closing_qty);
+          }
           if (day.closing && lastClose === null) lastClose = day.closing.closing_qty;
         });
         return { ...d, sold, rev: sold * d.sell_price, cogs: sold * d.buy_price, profit: sold * (d.sell_price - d.buy_price), lastClose };
@@ -1144,7 +1256,13 @@ function ReportTab({ barId, role }) {
       h.push("<div><span>Expenses</span><span class='mono err'>" + esc(fmt(data.totalExp)) + "</span></div>");
       h.push("<div style='border-top:1px solid #E5E7EB;margin-top:6px;padding-top:8px'><span><strong>Net " + (net >= 0 ? "Profit" : "Loss") + "</strong></span><span class='mono " + (net >= 0 ? "ok" : "err") + "' style='font-size:16px'>" + esc(fmt(Math.abs(net))) + "</span></div>");
       const cashAmt = view === "daily" ? data.dayCash?.amount : data.totalCash;
-      if (cashAmt) h.push("<div><span>Cash Collected</span><span class='mono ok'>" + esc(fmt(cashAmt)) + "</span></div>");
+      if (cashAmt) {
+        h.push("<div><span>Cash Collected</span><span class='mono ok'>" + esc(fmt(cashAmt)) + "</span></div>");
+        if (view === "daily") {
+          const varAmt = Number(cashAmt) - data.totalRev;
+          h.push("<div><span>Cash Variance</span><span class='mono " + (varAmt >= 0 ? "ok" : "err") + "'>" + (varAmt >= 0 ? "+" : "−") + esc(fmt(Math.abs(varAmt))) + "</span></div>");
+        }
+      }
       h.push("</div>");
     }
     h.push("<h2>" + (showMoney ? "Sales Breakdown" : "Units Breakdown") + "</h2><table><tr><th>Drink</th><th class='r'>Sold</th>" + (showMoney ? "<th class='r'>Revenue</th><th class='r'>Profit</th>" : "") + "<th class='r'>Closing</th></tr>");
@@ -1208,11 +1326,19 @@ function ReportTab({ barId, role }) {
                 daysLogged={data.daysLogged}
                 totalRev={data.totalRev} totalCOGS={data.totalCOGS} totalExp={data.totalExp}
               />
-              {data.dayCash && (
-                <div style={{ ...C.card, borderLeft: "4px solid " + OK }}>
-                  <div style={C.row}><span style={{ fontWeight: 700 }}>Cash Collected</span><span style={C.sval(OK)}>{fmt(data.dayCash.amount)}</span></div>
-                </div>
-              )}
+              {data.dayCash && (() => {
+                const varAmt = Number(data.dayCash.amount) - data.totalRev;
+                return (
+                  <div style={{ ...C.card, borderLeft: "4px solid " + (varAmt >= 0 ? OK : ERR) }}>
+                    <div style={C.row}><span style={C.slbl}>Expected Revenue</span><span style={C.sval(TEAL)}>{fmt(data.totalRev)}</span></div>
+                    <div style={C.row}><span style={C.slbl}>Cash Collected</span><span style={C.sval(OK)}>{fmt(data.dayCash.amount)}</span></div>
+                    <div style={{ ...C.row, marginBottom: 0, paddingTop: 8, borderTop: "1px solid " + BORDER }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: varAmt >= 0 ? OK : ERR }}>{varAmt >= 0 ? "✓ Over / Matched" : "⚠ Cash Short"}</span>
+                      <span style={C.sval(varAmt >= 0 ? OK : ERR)}>{varAmt >= 0 ? "+" : "−"}{fmt(Math.abs(varAmt))}</span>
+                    </div>
+                  </div>
+                );
+              })()}
               {view === "monthly" && (
                 <div style={{ ...C.card, borderLeft: "4px solid " + OK }}>
                   <div style={C.row}><span style={{ fontWeight: 700 }}>Total Cash Collected</span><span style={C.sval(OK)}>{fmt(data.totalCash)}</span></div>
@@ -1595,8 +1721,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
           ];
         }
         return (
-          <div onClick={close} style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: WHITE, borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, paddingBottom: 24 }}>
+          <div onClick={close} style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: SURFACE, borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, paddingBottom: 24 }}>
               <div style={{ padding: "18px 20px 12px", borderBottom: "1px solid " + BORDER }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{m.display_name}</div>
                 <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
@@ -1615,6 +1741,15 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
       {role === "supervisor" && (
         <>
+          <div style={C.sec}>Day Cycle <div style={C.line} /></div>
+          <div style={C.card}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Auto-close correction window</div>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 12, lineHeight: 1.5 }}>
+              When a day is closed automatically, Managers and Admins can correct its figures for this long.
+            </div>
+            <EditWindowPicker barId={barId} />
+          </div>
+
           <div style={C.sec}>Invite Manager <div style={C.line} /></div>
           <div style={C.card}>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 13 }}>Generate a one-time link to invite someone as Manager.</div>
@@ -1690,6 +1825,38 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 }
 
 
+
+// ── Edit Window Picker ────────────────────────────────────────────────────────
+function EditWindowPicker({ barId }) {
+  const [hours, setHours] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from("bars").select("edit_window_hours").eq("id", barId).single()
+      .then(({ data }) => setHours(data?.edit_window_hours || 24));
+  }, [barId]);
+
+  async function pick(h) {
+    setSaving(true);
+    const { error } = await supabase.from("bars").update({ edit_window_hours: h }).eq("id", barId);
+    if (error) alert("Could not save: " + errMsg(error));
+    else setHours(h);
+    setSaving(false);
+  }
+
+  if (hours === null) return <div style={{ fontSize: 12, color: MUTED }}>Loading...</div>;
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      {[24, 48].map(h => (
+        <button key={h} onClick={() => pick(h)} disabled={saving}
+          style={{ flex: 1, padding: "12px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", border: "1.5px solid " + (hours === h ? AMBER : BORDER), background: hours === h ? AMBER + "18" : "transparent", color: hours === h ? AMBER : MUTED }}>
+          {h} hours{hours === h ? " ✓" : ""}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Home Screen — Bar Selection ───────────────────────────────────────────────
 function HomeScreen({ user, onSelectBar, onSignOut }) {
   const [bars, setBars] = useState([]);
@@ -1729,7 +1896,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       const bump = id => { counts[id] = (counts[id] || 0) + 1; };
       (reqRes.data || []).forEach(r => {
         if (roleByBar[r.bar_id] === "supervisor") {
-          items.push({ barId: r.bar_id, bar: nameByBar[r.bar_id], icon: "👤", text: (r.display_name || "Someone") + " requested to join", kind: "request" });
+          items.push({ barId: r.bar_id, bar: nameByBar[r.bar_id], icon: "👤", text: (r.display_name || "Someone") + " requested to join", kind: "request", tab: 4 });
           bump(r.bar_id);
         }
       });
@@ -1741,21 +1908,21 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
         if (roleByBar[bid] === "viewer") return;
         const names = lowByBar[bid];
         const text = names.length === 1 ? names[0] + " is running low" : names.length + " drinks are running low (" + names.slice(0, 3).join(", ") + (names.length > 3 ? "..." : "") + ")";
-        items.push({ barId: bid, bar: nameByBar[bid], icon: "📉", text, kind: "stock" });
+        items.push({ barId: bid, bar: nameByBar[bid], icon: "📉", text, kind: "stock", tab: 0 });
         bump(bid);
       });
       const loggedBars = new Set((logRes.data || []).map(l => l.bar_id));
       barIds.forEach(bid => {
         if (roleByBar[bid] === "viewer") return;
         if (loggedBars.has(bid)) {
-          items.push({ barId: bid, bar: nameByBar[bid], icon: "✅", text: "Today's closing stock has been logged", kind: "log" });
+          items.push({ barId: bid, bar: nameByBar[bid], icon: "✅", text: "Today's closing stock has been logged", kind: "log", tab: 1 });
         } else {
-          items.push({ barId: bid, bar: nameByBar[bid], icon: "🕗", text: "Closing stock not logged yet today", kind: "log" });
+          items.push({ barId: bid, bar: nameByBar[bid], icon: "🕗", text: "Closing stock not logged yet today", kind: "log", tab: 1 });
         }
       });
       (auditRes.data || []).forEach(a => {
         if (a.action === "Member left" && roleByBar[a.bar_id] !== "viewer") {
-          items.push({ barId: a.bar_id, bar: nameByBar[a.bar_id], icon: "🚪", text: a.detail || "A member left the bar", kind: "member" });
+          items.push({ barId: a.bar_id, bar: nameByBar[a.bar_id], icon: "🚪", text: a.detail || "A member left the bar", kind: "member", tab: 4 });
           bump(a.bar_id);
         }
       });
@@ -1784,6 +1951,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
         throw new Error("Could not create your Admin profile: " + profErr.message);
       }
       setBarName(""); setDisplayName(""); setShowCreate(false);
+      onSelectBar({ id: user.id, bar_id: bar.id, role: "supervisor", display_name: name, is_owner: true, bars: bar }, 0);
       loadBars();
     } catch(e) { setErr(e.message); }
     finally { setSaving(false); }
@@ -1818,11 +1986,11 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
   return (
     <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ background: TEAL, padding: "20px 18px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: HDR, borderBottom: "1px solid " + AMBER + "44", padding: "20px 18px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 40, height: 40, objectFit: "contain" }} />
           <div>
-            <div style={{ fontFamily: "Georgia,serif", fontSize: 22, color: WHITE, fontWeight: 400 }}>Barnakular</div>
+            <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 22, color: WHITE, fontWeight: 400 }}>Barnakular</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{user.email}</div>
           </div>
         </div>
@@ -1832,11 +2000,11 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       <div style={{ padding: "20px 16px" }}>
         {/* Bar limit info */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-          <div style={{ flex: 1, background: WHITE, borderRadius: 12, padding: "12px", textAlign: "center", boxShadow: SHADOW }}>
+          <div style={{ flex: 1, background: SURFACE, borderRadius: 12, padding: "12px", textAlign: "center", boxShadow: SHADOW }}>
             <div style={{ fontFamily: "monospace", fontSize: 22, fontWeight: 800, color: TEAL }}>{ownedCount}/5</div>
             <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Bars Owned</div>
           </div>
-          <div style={{ flex: 1, background: WHITE, borderRadius: 12, padding: "12px", textAlign: "center", boxShadow: SHADOW }}>
+          <div style={{ flex: 1, background: SURFACE, borderRadius: 12, padding: "12px", textAlign: "center", boxShadow: SHADOW }}>
             <div style={{ fontFamily: "monospace", fontSize: 22, fontWeight: 800, color: BLUE }}>{joinedCount}/5</div>
             <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Bars Joined</div>
           </div>
@@ -1849,16 +2017,21 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: MUTED }}>Notifications</div>
               <button onClick={loadBars} style={{ background: "none", border: "none", color: TEAL, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>↻ Refresh</button>
             </div>
-            <div style={{ background: WHITE, borderRadius: 16, boxShadow: SHADOW, overflow: "hidden" }}>
-              {notifs.map((n, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderBottom: i < notifs.length - 1 ? "1px solid " + BORDER : "none" }}>
-                  <div style={{ fontSize: 18, lineHeight: 1 }}>{n.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: TXT, lineHeight: 1.4 }}>{n.text}</div>
-                    <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{n.bar}</div>
-                  </div>
-                </div>
-              ))}
+            <div style={{ background: SURFACE, borderRadius: 16, boxShadow: SHADOW, overflow: "hidden" }}>
+              {notifs.map((n, i) => {
+                const target = bars.find(p => p.bar_id === n.barId);
+                return (
+                  <button key={i} onClick={() => target && onSelectBar(target, n.tab ?? 0)}
+                    style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", width: "100%", background: "none", border: "none", borderBottom: i < notifs.length - 1 ? "1px solid " + BORDER : "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontSize: 18, lineHeight: 1 }}>{n.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, color: TXT, lineHeight: 1.4 }}>{n.text}</div>
+                      <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{n.bar}</div>
+                    </div>
+                    <div style={{ color: MUTED, fontSize: 16 }}>›</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1878,7 +2051,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
               const roleColor = ROLE_COLOR[p.role] || BLUE;
               return (
                 <button key={p.bar_id} onClick={() => onSelectBar(p)}
-                  style={{ display: "flex", alignItems: "center", width: "100%", padding: "16px", marginBottom: 10, background: WHITE, border: "1px solid " + BORDER, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW, textAlign: "left" }}>
+                  style={{ display: "flex", alignItems: "center", width: "100%", padding: "16px", marginBottom: 10, background: SURFACE, border: "1px solid " + BORDER, borderRadius: 16, cursor: "pointer", boxShadow: SHADOW, textAlign: "left" }}>
                   <div style={{ width: 48, height: 48, borderRadius: 12, background: roleColor + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginRight: 14, flexShrink: 0 }}>
                     🍺
                   </div>
@@ -1901,8 +2074,8 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
 
         {/* Create bar modal */}
         {showCreate && (
-          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div style={{ background: WHITE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
+          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div style={{ background: SURFACE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Create a Bar</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>You will be assigned as Admin</div>
               {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
@@ -1920,8 +2093,8 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
 
         {/* Join bar modal */}
         {showJoin && (
-          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div style={{ background: WHITE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
+          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div style={{ background: SURFACE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join a Bar</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>Enter the bar code to send a join request</div>
               {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
@@ -1944,7 +2117,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
             + Create Bar
           </button>
           <button onClick={() => { setShowJoin(true); setErr(""); }}
-            style={{ flex: 1, padding: "14px", borderRadius: 12, border: "1px solid " + BORDER, background: WHITE, color: TEAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            style={{ flex: 1, padding: "14px", borderRadius: 12, border: "1px solid " + BORDER, background: SURFACE, color: TEAL, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
             Join Bar
           </button>
         </div>
@@ -1998,11 +2171,11 @@ export default function App() {
   function handleDone({ bar: b, role, displayName }) { setAppState("home"); }
   function handleUpdate({ displayName, barName }) { setProfile(p => ({ ...p, display_name: displayName })); if (barName) setBar(b => ({ ...b, name: barName })); }
   async function handleLogout() { await supabase.auth.signOut(); }
-  function handleSelectBar(barProfile) {
+  function handleSelectBar(barProfile, initialTab = 0) {
     setSelectedBarProfile(barProfile);
     setProfile({ ...barProfile, display_name: barProfile.display_name });
     setBar(barProfile.bars);
-    setTab(0);
+    setTab(initialTab);
     setAppState("app");
   }
   function handleBackToHome() { setAppState("home"); setSelectedBarProfile(null); }
@@ -2027,12 +2200,12 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", paddingBottom: 72 }}>
-      <style>{"@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} .tabwrap{animation:fadeUp 0.22s ease} button{-webkit-tap-highlight-color:transparent;transition:transform 0.08s ease,opacity 0.15s ease} button:active{transform:scale(0.97)} input{transition:border-color 0.15s ease,box-shadow 0.15s ease} input:focus{border-color:" + TEAL + " !important;box-shadow:0 0 0 3px " + TEAL + "22} input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}"}</style>
-      <div style={{ padding: "13px 18px 11px", background: WHITE, borderBottom: "1px solid " + BORDER, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
+      <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap'); @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} .tabwrap{animation:fadeUp 0.22s ease} button{-webkit-tap-highlight-color:transparent;transition:transform 0.08s ease,opacity 0.15s ease} button:active{transform:scale(0.97)} input,select{transition:border-color 0.15s ease,box-shadow 0.15s ease;color-scheme:dark} input:focus{border-color:" + AMBER + " !important;box-shadow:0 0 0 3px " + AMBER + "22} input::placeholder{color:" + MUTED + "99} input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none} ::selection{background:" + AMBER + "44}"}</style>
+      <div style={{ padding: "13px 18px 11px", background: HDR, borderBottom: "1px solid " + AMBER + "33", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={handleBackToHome} style={{ background: "none", border: "none", cursor: "pointer", color: TEAL, fontSize: 20, padding: 0, lineHeight: 1 }}>‹</button>
           <div>
-            <div style={{ fontFamily: "Georgia,serif", fontSize: 18, fontWeight: 400, color: TXT }}>{bar?.name || "Barnakular"}</div>
+            <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 18, fontWeight: 400, color: TXT }}>{bar?.name || "Barnakular"}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
               <span style={C.tag(ROLE_COLOR[role] || BLUE)}>{displayName}</span>
               <span style={{ fontSize: 10, color: MUTED }}>{"· " + (ROLE_LABEL[role] || role)}</span>
@@ -2049,11 +2222,11 @@ export default function App() {
         {tab === 4 && <SettingsTab barId={barId} userId={user?.id} role={role} displayName={displayName} barName={bar?.name} barCode={barCode} onUpdate={handleUpdate} onLogout={handleLogout} />}
       </div>
 
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: WHITE, borderTop: "1px solid " + BORDER, display: "flex", zIndex: 50, boxShadow: "0 -2px 10px rgba(0,0,0,0.06)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#111B20", borderTop: "1px solid " + BORDER, display: "flex", zIndex: 50, boxShadow: "0 -4px 16px rgba(0,0,0,0.5)" }}>
         {NAV.map((n, i) => (
-          <button key={n.label} onClick={() => setTab(i)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, borderTop: tab === i ? "2px solid " + TEAL : "2px solid transparent", marginTop: -1 }}>
-            <span style={{ fontSize: 18, filter: tab === i ? "none" : "grayscale(1) opacity(0.4)" }}>{n.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: tab === i ? TEAL : MUTED }}>{n.label}</span>
+          <button key={n.label} onClick={() => setTab(i)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, borderTop: tab === i ? "2px solid " + AMBER : "2px solid transparent", marginTop: -1 }}>
+            <span style={{ fontSize: 18, filter: tab === i ? "drop-shadow(0 0 6px " + AMBER + "AA)" : "grayscale(1) opacity(0.35)", transition: "filter 0.2s ease" }}>{n.icon}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: tab === i ? AMBER : MUTED, textShadow: tab === i ? "0 0 8px " + AMBER + "66" : "none" }}>{n.label}</span>
           </button>
         ))}
       </div>
