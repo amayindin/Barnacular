@@ -83,6 +83,47 @@ function LoadingScreen() {
 }
 
 // ── Auth Screen ───────────────────────────────────────────────────────────────
+
+// ── Password Reset Screen ─────────────────────────────────────────────────────
+function PasswordResetScreen({ onDone }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    if (pw !== pw2) { setErr("Passwords do not match."); return; }
+    setSaving(true); setErr("");
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw });
+      if (error) throw error;
+      alert("Password updated! You are now logged in.");
+      onDone();
+    } catch (e) { console.error(e); setErr(errMsg(e)); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: SURFACE, borderRadius: 20, boxShadow: SHADOW, padding: "28px 24px", width: "100%", maxWidth: 380 }}>
+        <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 24, color: TXT, textAlign: "center", marginBottom: 6 }}>Set a new password</div>
+        <div style={{ fontSize: 13, color: MUTED, textAlign: "center", marginBottom: 20 }}>Choose a new password for your Barnakular account.</div>
+        {err && <div style={{ background: ERR + "12", border: "1px solid " + ERR + "33", borderRadius: 10, color: ERR, fontSize: 13, padding: "10px 13px", marginBottom: 13 }}>{err}</div>}
+        <div style={{ marginBottom: 12 }}>
+          <label style={C.lbl}>New Password</label>
+          <input style={C.inp} type="password" value={pw} onChange={e => setPw(e.target.value)} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={C.lbl}>Confirm New Password</label>
+          <input style={C.inp} type="password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => e.key === "Enter" && save()} />
+        </div>
+        <button onClick={save} disabled={saving} style={{ ...C.btn("primary"), opacity: saving ? 0.6 : 1 }}>{saving ? "Saving..." : "Save New Password"}</button>
+      </div>
+    </div>
+  );
+}
+
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("landing"); // landing | login | signup
   const [email, setEmail] = useState("");
@@ -109,6 +150,17 @@ function AuthScreen({ onAuth }) {
         onAuth(data.user);
       }
     } catch (e) { console.error("Auth error:", e); setErr(errMsg(e)); }
+    finally { setLoading(false); }
+  }
+
+  async function handleForgot() {
+    if (!email.trim()) { setErr("Enter your email above first, then tap Forgot Password."); return; }
+    setLoading(true); setErr("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+      if (error) throw error;
+      setMsg("Password reset email sent to " + email.trim() + ". Open the link on this device to set a new password.");
+    } catch (e) { console.error(e); setErr(errMsg(e)); }
     finally { setLoading(false); }
   }
 
@@ -173,6 +225,11 @@ function AuthScreen({ onAuth }) {
       <button onClick={handleEmail} disabled={loading} style={{ ...C.btn("primary"), opacity: loading ? 0.6 : 1 }}>
         {loading ? "Please wait..." : mode === "login" ? "Log In" : "Create Account"}
       </button>
+      {mode === "login" && (
+        <button onClick={handleForgot} disabled={loading} style={{ marginTop: 12, background: "none", border: "none", color: TEAL, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%", textAlign: "center" }}>
+          Forgot password?
+        </button>
+      )}
       <div style={{ marginTop: 16, textAlign: "center", fontSize: 13, color: MUTED }}>
         {mode === "login" ? "Don't have an account? " : "Already have an account? "}
         <span onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErr(""); }}
@@ -449,6 +506,15 @@ function calcSales(drinks, logs) {
 }
 
 // ── Stock Tab ─────────────────────────────────────────────────────────────────
+
+// ── Nigerian drink catalog for quick-add ─────────────────────────────────────
+const NG_CATALOG = {
+  "Beer": ["Star", "Gulder", "Trophy", "Heineken", "Goldberg", "33 Export", "Life", "Hero", "Budweiser", "Desperados", "Legend Extra Stout", "Guinness Stout", "Turbo King"],
+  "Malt & Soft": ["Maltina", "Amstel Malta", "Malta Guinness", "Coca-Cola", "Fanta", "Sprite", "Pepsi", "Schweppes", "La Casera", "Bigi Cola", "Chapman"],
+  "Spirits & Mix": ["Smirnoff Ice", "Orijin", "Origin Bitters", "Trophy Extra Special", "Star Radler", "Flying Fish", "Snapp", "Best Whisky", "Squadron", "Chelsea Dry Gin", "Seaman's Schnapps", "Action Bitters"],
+  "Wine & Others": ["4th Street", "Carlo Rossi", "Baron de Valls", "Eva Wine", "Don Simon", "Small Stout", "Water (bottle)", "Energy Drink"]
+};
+
 function StockTab({ barId, role, userId, displayName }) {
   const [drinks, setDrinks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -459,6 +525,7 @@ function StockTab({ barId, role, userId, displayName }) {
   const [editRow, setEditRow] = useState({});
   const [editErr, setEditErr] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false);
   const [err, setErr] = useState("");
   const [now, setNow] = useState(new Date());
 
@@ -646,8 +713,33 @@ function StockTab({ barId, role, userId, displayName }) {
           <div style={{ fontSize: 32, marginBottom: 8 }}>🍾</div>
           <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 18, color: TXT, marginBottom: 8 }}>Count your stock</div>
           <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
-            Welcome! Walk the bar and add every drink with the <strong style={{ color: AMBER }}>quantity currently on ground</strong>. That first count becomes your opening stock — every report builds on it.
+            Welcome! Walk the bar and add every drink with the <strong style={{ color: AMBER }}>quantity currently on ground</strong>. That first count becomes your opening stock — every report builds on it. Tap a drink below to add it fast.
           </div>
+        </div>
+      )}
+      {canEdit && (
+        <div style={{ ...C.card, padding: "14px 16px" }}>
+          <button onClick={() => setShowCatalog(v => !v)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: TXT }}>⚡ Quick Add — Popular Drinks</span>
+            <span style={{ color: MUTED }}>{showCatalog ? "▲" : "▼"}</span>
+          </button>
+          {showCatalog && Object.entries(NG_CATALOG).map(([group, names]) => (
+            <div key={group} style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: MUTED, marginBottom: 7 }}>{group}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {names.map(n => {
+                  const exists = drinks.some(d => d.name.toLowerCase() === n.toLowerCase()) || pending.some(d => d.name.toLowerCase() === n.toLowerCase());
+                  return (
+                    <button key={n} disabled={exists}
+                      onClick={() => { setNewRow(p => ({ ...p, name: n })); document.getElementById("qty-input")?.focus(); }}
+                      style={{ padding: "7px 12px", borderRadius: 16, border: "1px solid " + (exists ? BORDER : TEAL + "55"), background: exists ? INP : TEAL + "0E", color: exists ? MUTED : TEAL, fontSize: 12, fontWeight: 600, cursor: exists ? "default" : "pointer", opacity: exists ? 0.55 : 1 }}>
+                      {exists ? "✓ " : "+ "}{n}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -694,7 +786,7 @@ function StockTab({ barId, role, userId, displayName }) {
             {canEdit && (
               <tr style={{ background: "#F5F7F9" }}>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12 }} placeholder="Drink name" value={newRow.name} onChange={e => setNewRow(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === "Enter" && addDrink()} /></td>
-                <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 70 }} type="number" placeholder="Qty" value={newRow.quantity} onChange={e => setNewRow(p => ({ ...p, quantity: e.target.value }))} /></td>
+                <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 70 }} type="number" placeholder="Qty" id="qty-input" value={newRow.quantity} onChange={e => setNewRow(p => ({ ...p, quantity: e.target.value }))} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 54 }} type="number" placeholder="Min" value={newRow.min_quantity} onChange={e => setNewRow(p => ({ ...p, min_quantity: e.target.value }))} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 90 }} type="number" placeholder="Buy ₦" value={newRow.buy_price} onChange={e => setNewRow(p => ({ ...p, buy_price: e.target.value }))} /></td>
                 {role === "supervisor" ? (
@@ -913,8 +1005,21 @@ function DailyLogTab({ barId, role, userId, displayName }) {
   async function saveCash() {
     const amount = parseFloat(cash);
     if (isNaN(amount) || amount < 0) { alert("Enter a valid cash amount."); return; }
-    await supabase.from("cash_records").upsert({ bar_id: barId, record_date: date, amount, recorded_by: recorderName });
-    setCash(""); setShowCash(false); alert("Cash recorded successfully!");
+    const { error } = await supabase.from("cash_records").upsert({ bar_id: barId, record_date: date, amount, recorded_by: recorderName });
+    if (error) { alert("Could not save cash: " + errMsg(error)); return; }
+    let expected = 0;
+    drinks.forEach(d => {
+      const o = getOpening(d.id); const c = getClosing(d.id);
+      if (o !== null && c !== null) expected += Math.max(0, o + getRestocked(d.id, date) - c) * d.sell_price;
+    });
+    const diff = amount - expected;
+    setCash(""); setShowCash(false);
+    if (role !== "manager" && expected > 0) {
+      if (diff >= 0) alert("Cash recorded ✓\n\nExpected " + fmt(expected) + ", collected " + fmt(amount) + ". All accounted for" + (diff > 0 ? " (+" + fmt(diff) + " over)." : "."));
+      else alert("Cash recorded — but SHORT by " + fmt(Math.abs(diff)) + ".\n\nExpected " + fmt(expected) + ", collected " + fmt(amount) + ". Check the day's figures in the Report tab.");
+    } else {
+      alert("Cash recorded successfully!");
+    }
   }
 
   if (loading) return <div style={C.empty}>Loading logs...</div>;
@@ -1017,8 +1122,22 @@ function DailyLogTab({ barId, role, userId, displayName }) {
               </div>
             </div>
           )}
-          {showCash && (
+          {showCash && (() => {
+            let totSold = 0, totRev = 0, top = null, topSold = 0;
+            drinks.forEach(d => {
+              const o = getOpening(d.id); const c = getClosing(d.id);
+              if (o !== null && c !== null) {
+                const sld = Math.max(0, o + getRestocked(d.id, date) - c);
+                totSold += sld; totRev += sld * d.sell_price;
+                if (sld > topSold) { topSold = sld; top = d.name; }
+              }
+            });
+            return (
             <div style={{ ...C.card, border: "1.5px solid " + OK, marginBottom: 14 }}>
+              <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 20, color: TXT, marginBottom: 6 }}>🍻 Day closed!</div>
+              <div style={{ fontSize: 14, color: TXT, lineHeight: 1.6, marginBottom: 14 }}>
+                You sold <strong style={{ color: TEAL }}>{totSold} drinks</strong>{role !== "manager" ? <> worth <strong style={{ color: TEAL }}>{fmt(totRev)}</strong></> : null}{top ? <> — top seller <strong style={{ color: AMBER }}>{top}</strong> ({topSold})</> : null}.
+              </div>
               <div style={{ fontWeight: 700, fontSize: 15, color: OK, marginBottom: 12 }}>💰 Record Cash Collected</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>How much cash was collected today ({date})?</div>
               <label style={C.lbl}>Cash Amount (₦)</label>
@@ -1028,7 +1147,8 @@ function DailyLogTab({ barId, role, userId, displayName }) {
                 <button onClick={() => setShowCash(false)} style={{ ...C.btn("ghost"), flex: 1 }}>Skip</button>
               </div>
             </div>
-          )}
+            );
+          })()}
         </>
       )}
       <div style={C.sec}>Past Records <div style={C.line} /></div>
@@ -1271,6 +1391,29 @@ function ReportTab({ barId, role }) {
   const seg = v => ({ flex: 1, padding: "11px", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", background: view === v ? TEAL : INP, color: view === v ? WHITE : MUTED, borderRadius: 10 });
   const isManager = role === "manager";
 
+  function shareWhatsApp() {
+    if (!data) return;
+    const label = view === "daily" ? fmtDate(date) : new Date(month + "-01").toLocaleString("en-NG", { month: "long", year: "numeric" });
+    const totSold = data.drinkStats.reduce((sum, d) => sum + d.sold, 0);
+    const netP = data.totalRev - data.totalCOGS - data.totalExp;
+    const best = [...data.drinkStats].sort((a, b) => b.sold - a.sold)[0];
+    let text = "🍺 Barnakular Report — " + label + "\n\n";
+    text += "Drinks sold: " + totSold + "\n";
+    if (role !== "manager") {
+      text += "Revenue: " + fmt(data.totalRev) + "\n";
+      text += "Expenses: " + fmt(data.totalExp) + "\n";
+      text += (netP >= 0 ? "Profit: " : "Loss: ") + fmt(Math.abs(netP)) + "\n";
+      const cashAmt = view === "daily" ? data.dayCash?.amount : null;
+      if (cashAmt != null) {
+        const diff = Number(cashAmt) - data.totalRev;
+        text += "Cash collected: " + fmt(cashAmt) + (diff < 0 ? " (SHORT " + fmt(Math.abs(diff)) + " ⚠)" : " ✓") + "\n";
+      }
+    }
+    if (best && best.sold > 0) text += "Top seller: " + best.name + " (" + best.sold + ")\n";
+    if (navigator.share) navigator.share({ text }).catch(() => {});
+    else window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+  }
+
   function downloadReport() {
     if (!data) return;
     const showMoney = role !== "manager";
@@ -1352,8 +1495,27 @@ function ReportTab({ barId, role }) {
 
       {!loading && data && (
         <>
-          <button onClick={downloadReport} style={{ ...C.btn("amber"), marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          {!isManager && (() => {
+            const totSold = data.drinkStats.reduce((sum, d) => sum + d.sold, 0);
+            const netP = data.totalRev - data.totalCOGS - data.totalExp;
+            const best = [...data.drinkStats].sort((a, b) => b.sold - a.sold)[0];
+            const cashAmt = view === "daily" ? data.dayCash?.amount : null;
+            const diff = cashAmt != null ? Number(cashAmt) - data.totalRev : null;
+            return (
+              <div style={{ ...C.card, borderLeft: "4px solid " + (netP >= 0 ? OK : ERR) }}>
+                <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 17, color: TXT, lineHeight: 1.5 }}>
+                  {totSold === 0 ? "No sales recorded for this period yet." : (
+                    <>Sold <strong style={{ color: TEAL }}>{totSold} drinks</strong> · {netP >= 0 ? "Made" : "Lost"} <strong style={{ color: netP >= 0 ? OK : ERR }}>{fmt(Math.abs(netP))}</strong>{best && best.sold > 0 ? <> · Best seller <strong style={{ color: AMBER }}>{best.name}</strong></> : null}{diff !== null && diff < 0 ? <> · <strong style={{ color: ERR }}>Cash short {fmt(Math.abs(diff))}</strong></> : null}</>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          <button onClick={downloadReport} style={{ ...C.btn("amber"), marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             ⬇ Download {view === "daily" ? "Daily" : "Monthly"} Report (PDF)
+          </button>
+          <button onClick={shareWhatsApp} style={{ ...C.btn("ok"), marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            💬 Share Summary to WhatsApp
           </button>
           {!isManager && (
             <>
@@ -1577,6 +1739,25 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
     } catch (e) { alert("Delete failed: " + errMsg(e)); setDeleting(false); }
   }
 
+  async function exportData() {
+    try {
+      const tables = ["drinks", "stock_logs", "restocks", "expenses", "cash_records", "profiles", "audit_logs"];
+      const out = { bar: barName, exported_at: new Date().toISOString() };
+      for (const t of tables) {
+        const { data, error } = await supabase.from(t).select("*").eq("bar_id", barId);
+        if (error) throw new Error(t + ": " + error.message);
+        out[t] = data || [];
+      }
+      const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "barnakular-" + barName.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() + "-" + today() + ".json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { alert("Export failed: " + errMsg(e)); }
+  }
+
   async function approveRequest(req) {
     const viewers = members.filter(m => m.role === "viewer");
     if (viewers.length >= 5) { alert("Maximum 5 viewers already reached. Remove a viewer first."); return; }
@@ -1676,7 +1857,12 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         <div style={{ background: INP, border: "1px solid " + BORDER, borderRadius: 10, padding: "14px", textAlign: "center", marginBottom: 12 }}>
           <div style={{ fontFamily: "monospace", fontSize: 28, fontWeight: 800, color: TEAL, letterSpacing: 4 }}>{barCode}</div>
         </div>
-        <button onClick={() => navigator.clipboard.writeText(barCode)} style={C.btn("ghost")}>Copy Bar Code</button>
+        <button onClick={() => navigator.clipboard.writeText(barCode)} style={{ ...C.btn("ghost"), marginBottom: 8 }}>Copy Bar Code</button>
+        <button onClick={() => {
+          const text = "Join my bar \"" + barName + "\" on Barnakular! 🍺\n\n1. Open " + window.location.origin + "\n2. Sign up\n3. Tap Join Bar and enter code: " + barCode;
+          if (navigator.share) navigator.share({ text }).catch(() => {});
+          else window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+        }} style={C.btn("ok")}>💬 Share Invite via WhatsApp</button>
       </div>
 
       {role === "supervisor" && requests.length > 0 && (
@@ -1694,6 +1880,18 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
           ))}
         </>
       )}
+
+      <div style={C.sec}>Your Role <div style={C.line} /></div>
+      <div style={C.card}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={C.tag(role === "supervisor" ? AMBER : role === "manager" ? OK : BLUE)}>{ROLE_LABEL[role] || role}</span>
+        </div>
+        <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
+          {role === "supervisor" && "You run this bar: set prices, manage the team, approve join requests, edit any day, delete the bar, and see all money reports."}
+          {role === "manager" && "You run daily operations: add drinks, record restocks, log the day, and add expenses. Selling prices and team management belong to the Admin, and money figures are hidden from your reports."}
+          {role === "viewer" && "You have read-only access: browse the stock register, daily logs, expenses, and full reports. You cannot change anything."}
+        </div>
+      </div>
 
       <div style={C.sec}>Team Members <div style={C.line} /></div>
       <div style={C.card}>
@@ -1838,6 +2036,12 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
       {role === "supervisor" && (
         <>
+          <div style={C.sec}>Your Data <div style={C.line} /></div>
+          <div style={C.card}>
+            <div style={{ fontSize: 13, color: MUTED, marginBottom: 13, lineHeight: 1.5 }}>Your bar's data belongs to you. Download a complete copy — drinks, logs, restocks, expenses, cash records, and team — as a file you can keep or open in a spreadsheet.</div>
+            <button onClick={exportData} style={C.btn("secondary")}>⬇ Export All Bar Data</button>
+          </div>
+
           <div style={{ ...C.sec, color: ERR }}>Danger Zone <div style={{ ...C.line, background: ERR + "33" }} /></div>
           <div style={{ ...C.card, border: "1.5px solid " + ERR + "44" }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: ERR, marginBottom: 6 }}>Delete This Bar</div>
@@ -2221,7 +2425,8 @@ export default function App() {
       else setAppState("auth");
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) await loadUserData(session.user);
+      if (event === "PASSWORD_RECOVERY") { setUser(session?.user || null); setAppState("recovery"); }
+      else if (event === "SIGNED_IN" && session?.user) await loadUserData(session.user);
       else if (event === "SIGNED_OUT") { setUser(null); setProfile(null); setBar(null); setAppState("auth"); }
     });
     return () => subscription.unsubscribe();
@@ -2254,6 +2459,7 @@ export default function App() {
   function handleBackToHome() { setAppState("home"); setSelectedBarProfile(null); }
 
   if (appState === "loading") return <LoadingScreen />;
+  if (appState === "recovery") return <PasswordResetScreen onDone={() => loadUserData(user)} />;
   if (appState === "auth") return <AuthScreen onAuth={handleAuth} />;
   if (appState === "home") return <HomeScreen user={user} onSelectBar={handleSelectBar} onSignOut={handleLogout} />;
   if (appState === "invite") return <JoinViaInvite user={user} token={inviteToken} onDone={handleDone} />;
