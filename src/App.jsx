@@ -5,19 +5,13 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ── Palette: "after-hours brass" — a bar at night, teal shadows lit by whiskey gold ──
-const TEAL = "#4FB8D6";                 // lagoon teal — the brand accent, now luminous
-const AMBER = "#E3A93C";                // whiskey gold — brass, bottles, backbar light
-const WHITE = "#FFFFFF";                // reserved for text on colored buttons
-const SURFACE = "#162126";              // raised card surface, teal-charcoal
-const BG = "#0E1518";                   // deep night base
-const TXT = "#F2EFE8";                  // warm off-white, like light through a glass
-const MUTED = "#8A9BA3";                // teal-grey for secondary text
-const OK = "#3DCB7D", ERR = "#F0564F";
-const BORDER = "#243239", INP = "#1D2B31";
-const SHADOW = "0 4px 18px rgba(0,0,0,0.45)";
-const BLUE = "#5B9BE6", PURPLE = "#9F7AEA";
-const HDR = "linear-gradient(150deg, #0F2A35 0%, #14404E 100%)"; // deep teal header
+// ── Palette ───────────────────────────────────────────────────────────────────
+const TEAL = "#1B3A4B", AMBER = "#C8861A", WHITE = "#FFFFFF", BG = "#F6F7F9";
+const SURFACE = "#FFFFFF";
+const TXT = "#1A1A1A", MUTED = "#8A8A8A", OK = "#27AE60", ERR = "#E03131";
+const BORDER = "#E5E7EB", INP = "#F2F4F6", SHADOW = "0 2px 10px rgba(0,0,0,0.07)";
+const BLUE = "#3B7DD8", PURPLE = "#7C3AED";
+const HDR = TEAL;
 
 const ROLE_COLOR = { supervisor: AMBER, manager: OK, viewer: BLUE };
 const ROLE_LABEL = { supervisor: "Admin", manager: "Manager", viewer: "Viewer" };
@@ -60,7 +54,7 @@ const C = {
   btn: (v = "primary") => ({
     width: "100%", padding: "13px", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
     background: v === "primary" ? TEAL : v === "amber" ? AMBER : v === "ok" ? OK : v === "err" ? ERR : v === "ghost" ? "transparent" : v === "google" ? WHITE : INP,
-    color: v === "ghost" ? MUTED : v === "google" ? TXT : v === "primary" || v === "amber" || v === "ok" ? "#0E1518" : WHITE,
+    color: v === "ghost" ? MUTED : v === "google" ? TXT : WHITE,
     border: v === "ghost" ? "1px solid " + BORDER : v === "google" ? "1px solid " + BORDER : "none",
     boxShadow: v === "google" ? SHADOW : "none",
   }),
@@ -73,7 +67,7 @@ const C = {
   tag: c => ({ display: "inline-block", background: c + "18", color: c, borderRadius: 20, fontSize: 10, fontWeight: 700, padding: "3px 9px" }),
   empty: { textAlign: "center", color: MUTED, padding: "40px 14px", fontSize: 13 },
   tw: { overflowX: "auto", borderRadius: 12, border: "1px solid " + BORDER, background: SURFACE, marginBottom: 14, boxShadow: SHADOW },
-  th: c => ({ padding: "9px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: c || MUTED, background: "#1A272D", borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", textAlign: "left" }),
+  th: c => ({ padding: "9px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: c || MUTED, background: "#F5F7F9", borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", textAlign: "left" }),
   td: c => ({ padding: "10px 11px", fontSize: 13, color: c || TXT, borderBottom: "1px solid " + BORDER, whiteSpace: "nowrap", verticalAlign: "middle" }),
 };
 
@@ -461,8 +455,6 @@ function StockTab({ barId, role, userId, displayName }) {
   const [newRow, setNewRow] = useState({ name: "", buy_price: "", sell_price: "", quantity: "", min_quantity: "" });
   const [priceId, setPriceId] = useState(null);
   const [priceData, setPriceData] = useState({});
-  const [restockId, setRestockId] = useState(null);
-  const [restockQty, setRestockQty] = useState("");
   const [editId, setEditId] = useState(null);
   const [editRow, setEditRow] = useState({});
   const [editErr, setEditErr] = useState("");
@@ -554,20 +546,6 @@ function StockTab({ barId, role, userId, displayName }) {
     await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Set sell price of " + d.name, detail: fmt(s) });
     setPriceId(null); setErr("");
     loadDrinks();
-  }
-
-  async function doRestock() {
-    const q = num(restockQty, false);
-    if (q === null || q <= 0) { alert("Enter a valid quantity."); return; }
-    const d = drinks.find(x => x.id === restockId);
-    try {
-      const { error } = await supabase.from("restocks").insert({ bar_id: barId, drink_id: restockId, quantity: q, restock_date: today() });
-      if (error) throw error;
-      await supabase.from("drinks").update({ quantity: d.quantity + q }).eq("id", restockId).eq("bar_id", barId);
-      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+"+q+" units" });
-      setRestockId(null); setRestockQty("");
-      loadDrinks();
-    } catch (e) { alert("Restock failed: " + errMsg(e)); }
   }
 
   async function archiveDrink(id) {
@@ -706,7 +684,6 @@ function StockTab({ barId, role, userId, displayName }) {
                   <td style={{ ...C.td(), color: TEAL }}>{d.price_pending ? "—" : fmt(d.quantity * d.sell_price)}</td>
                   {!isReadOnly && (
                     <td style={{ ...C.td(), whiteSpace: "nowrap" }}>
-                      {canEdit && <button onClick={() => setRestockId(d.id)} title="Restock" style={{ background: OK + "18", color: OK, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", marginRight: 3 }}>+</button>}
                       {canEdit && <button onClick={() => openEdit(d)} title="Edit figures" style={{ background: TEAL + "14", color: TEAL, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", marginRight: 3 }}>✎</button>}
                       {role === "supervisor" && <button onClick={() => archiveDrink(d.id)} style={{ background: ERR + "18", color: ERR, border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Archive</button>}
                     </td>
@@ -715,7 +692,7 @@ function StockTab({ barId, role, userId, displayName }) {
               );
             })}
             {canEdit && (
-              <tr style={{ background: "#1A272D" }}>
+              <tr style={{ background: "#F5F7F9" }}>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12 }} placeholder="Drink name" value={newRow.name} onChange={e => setNewRow(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === "Enter" && addDrink()} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 70 }} type="number" placeholder="Qty" value={newRow.quantity} onChange={e => setNewRow(p => ({ ...p, quantity: e.target.value }))} /></td>
                 <td style={{ padding: "8px" }}><input style={{ ...C.inp, padding: "6px 9px", fontSize: 12, width: 54 }} type="number" placeholder="Min" value={newRow.min_quantity} onChange={e => setNewRow(p => ({ ...p, min_quantity: e.target.value }))} /></td>
@@ -743,28 +720,12 @@ function StockTab({ barId, role, userId, displayName }) {
         </table>
       </div>
 
-      {restockId && (() => {
-        const d = drinks.find(x => x.id === restockId);
-        return (
-          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-            <div style={{ background: SURFACE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>Restock — {d?.name}</div>
-              <label style={C.lbl}>Units to Add</label>
-              <input style={{ ...C.inp, marginBottom: 16 }} type="number" value={restockQty} onChange={e => setRestockQty(e.target.value)} placeholder="e.g. 12" autoFocus />
-              <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ ...C.btn("primary"), flex: 1 }} onClick={doRestock}>Confirm</button>
-                <button style={{ ...C.btn("ghost"), flex: 1 }} onClick={() => { setRestockId(null); setRestockQty(""); }}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {editId && (() => {
         const d = drinks.find(x => x.id === editId);
         if (!d) return null;
         return (
-          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div style={{ background: SURFACE, borderRadius: 20, padding: 22, width: "100%", maxWidth: 360, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Edit — {d.name}</div>
               <div style={{ fontSize: 12, color: MUTED, marginBottom: 16 }}>All changes are recorded in the audit log.</div>
@@ -826,8 +787,11 @@ function DailyLogTab({ barId, role, userId, displayName }) {
   const [expandedDate, setExpandedDate] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [autoClosedNote, setAutoClosedNote] = useState(false);
+  const [restockFor, setRestockFor] = useState(null);
+  const [restockQty, setRestockQty] = useState("");
 
   const canLog = role === "manager" || role === "supervisor";
+  const soldMode = barMeta?.log_mode === "sold";
 
   // Auto-closed days stay editable for a window the Admin chooses (24h/48h)
   function dayAutoClosed(d) {
@@ -849,7 +813,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
         supabase.from("stock_logs").select("*").eq("bar_id", barId).order("log_date", { ascending: false }),
         supabase.from("restocks").select("*").eq("bar_id", barId),
         supabase.from("cash_records").select("*").eq("bar_id", barId),
-        supabase.from("bars").select("edit_window_hours").eq("id", barId).single()
+        supabase.from("bars").select("edit_window_hours, log_mode").eq("id", barId).single()
       ]);
       setDrinks(drinksData || []); setLogs(logsData || []); setRestocks(restockData || []);
       setCashRecords(cashData || []); setBarMeta(barData || null); setLoading(false);
@@ -895,6 +859,20 @@ function DailyLogTab({ barId, role, userId, displayName }) {
     return restocks.filter(r => r.drink_id === drinkId && r.restock_date === d).reduce((s, r) => s + r.quantity, 0);
   }
 
+  async function saveRestock() {
+    const q = num(restockQty, false);
+    if (q === null || q <= 0) { alert("Enter a valid quantity."); return; }
+    const d = restockFor;
+    try {
+      const { error } = await supabase.from("restocks").insert({ bar_id: barId, drink_id: d.id, quantity: q, restock_date: date });
+      if (error) throw error;
+      await supabase.from("drinks").update({ quantity: d.quantity + q }).eq("id", d.id).eq("bar_id", barId);
+      await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Restocked " + d.name, detail: "+" + q + " units on " + date });
+      setRestockFor(null); setRestockQty("");
+      setReloadKey(k => k + 1);
+    } catch (e) { alert("Restock failed: " + errMsg(e)); }
+  }
+
   async function saveClosing() {
     const hasAny = drinks.some(d => closeEnt[d.id] !== undefined && closeEnt[d.id] !== "");
     if (!hasAny) { alert("Enter at least one closing quantity."); return; }
@@ -902,10 +880,14 @@ function DailyLogTab({ barId, role, userId, displayName }) {
       const val = closeEnt[d.id];
       if (val === undefined || val === "") continue;
       const n = num(val, false);
-      if (n === null) { alert("Invalid closing quantity for " + d.name + ". Enter a non-negative whole number."); return; }
+      if (n === null) { alert("Invalid " + (soldMode ? "sold" : "closing") + " quantity for " + d.name + ". Enter a non-negative whole number."); return; }
       const opening = getOpening(d.id);
       const avail = opening !== null ? opening + getRestocked(d.id, date) : null;
-      if (avail !== null && n > avail && !window.confirm(d.name + ": closing (" + n + ") is higher than opening + restocks (" + avail + "). Save anyway?")) return;
+      if (soldMode) {
+        if (avail !== null && n > avail && !window.confirm(d.name + ": sold (" + n + ") is more than opening + restocks (" + avail + "). Save anyway?")) return;
+      } else {
+        if (avail !== null && n > avail && !window.confirm(d.name + ": closing (" + n + ") is higher than opening + restocks (" + avail + "). Save anyway?")) return;
+      }
     }
     setSaving(true);
     try {
@@ -913,11 +895,14 @@ function DailyLogTab({ barId, role, userId, displayName }) {
         const val = closeEnt[d.id];
         if (val === undefined || val === "") continue;
         const opening = getOpening(d.id) ?? 0;
+        const entered = parseInt(val, 10);
+        // In sold mode the user typed units sold; derive the closing count so the stock chain stays intact
+        const closingVal = soldMode ? Math.max(0, opening + getRestocked(d.id, date) - entered) : entered;
         const existingOpen = logs.find(l => l.drink_id === d.id && l.log_type === "opening" && l.log_date === date);
         if (!existingOpen) await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: date, opening_qty: opening, log_type: "opening", recorded_by: recorderName });
         const existingClose = logs.find(l => l.drink_id === d.id && l.log_type === "closing" && l.log_date === date);
-        if (existingClose) await supabase.from("stock_logs").update({ closing_qty: parseFloat(val), recorded_by: recorderName, auto_closed: false }).eq("id", existingClose.id);
-        else await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: date, closing_qty: parseFloat(val), log_type: "closing", recorded_by: recorderName });
+        if (existingClose) await supabase.from("stock_logs").update({ closing_qty: closingVal, recorded_by: recorderName, auto_closed: false }).eq("id", existingClose.id);
+        else await supabase.from("stock_logs").insert({ bar_id: barId, drink_id: d.id, log_date: date, closing_qty: closingVal, log_type: "closing", recorded_by: recorderName });
       }
       await supabase.from("audit_logs").insert({ bar_id: barId, user_id: userId, role, action: "Saved closing stock", detail: "for " + date });
       setCloseEnt({}); setShowCash(true);
@@ -961,32 +946,51 @@ function DailyLogTab({ barId, role, userId, displayName }) {
                 <th style={C.th()}>Drink</th>
                 <th style={C.th(OK)}>Opening</th>
                 <th style={C.th(AMBER)}>+Restock</th>
-                <th style={C.th(TEAL)}>Closing</th>
-                <th style={C.th()}>Sold</th>
+                <th style={C.th(TEAL)}>{soldMode ? "Sold" : "Closing"}</th>
+                <th style={C.th()}>{soldMode ? "Closing" : "Sold"}</th>
               </tr></thead>
               <tbody>{drinks.map(d => {
                 const opening = getOpening(d.id);
                 const restocked = getRestocked(d.id, date);
                 const closing = getClosing(d.id);
-                const sold = opening !== null && closing !== null ? Math.max(0, opening + restocked - closing) : null;
+                const typed = closeEnt[d.id];
+                const savedSold = opening !== null && closing !== null ? Math.max(0, opening + restocked - closing) : null;
+                let liveDerived = null;
+                if (typed !== undefined && typed !== "" && opening !== null) {
+                  const t = parseInt(typed || 0, 10);
+                  liveDerived = soldMode ? Math.max(0, opening + restocked - t) : Math.max(0, opening + restocked - t);
+                }
+                // In count mode the derived figure is Sold; in sold mode it is Closing
+                const derived = liveDerived !== null ? liveDerived : (soldMode ? closing : savedSold);
+                const inputPlaceholder = soldMode ? (savedSold !== null ? String(savedSold) : "—") : (closing !== null ? String(closing) : "—");
+                const savedTick = soldMode ? savedSold : closing;
                 return (
                   <tr key={d.id}>
                     <td style={{ ...C.td(), fontWeight: 600 }}>{d.name}</td>
                     <td style={{ ...C.td(), fontFamily: "monospace", color: OK, fontWeight: 600 }}>
                       {opening !== null ? opening : <span style={{ color: MUTED }}>—</span>}
                     </td>
-                    <td style={{ ...C.td(), fontFamily: "monospace", color: restocked > 0 ? AMBER : MUTED }}>{restocked > 0 ? "+" + restocked : "—"}</td>
+                    <td style={C.td()}>
+                      {canLog && !isLocked ? (
+                        <button onClick={() => { setRestockFor(d); setRestockQty(""); }}
+                          style={{ background: AMBER + "14", border: "1px dashed " + AMBER + "66", borderRadius: 8, color: restocked > 0 ? AMBER : MUTED, fontFamily: "monospace", fontWeight: 700, fontSize: 12, padding: "5px 10px", cursor: "pointer" }}>
+                          {restocked > 0 ? "+" + restocked : "+"}
+                        </button>
+                      ) : (
+                        <span style={{ fontFamily: "monospace", color: restocked > 0 ? AMBER : MUTED }}>{restocked > 0 ? "+" + restocked : "—"}</span>
+                      )}
+                    </td>
                     <td style={C.td(TEAL)}>
                       {canLog && !isLocked ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <input style={{ ...C.inp, padding: "5px 7px", fontSize: 12, width: 64, textAlign: "center" }}
-                            type="number" placeholder={closing !== null ? String(closing) : "—"}
+                            type="number" placeholder={inputPlaceholder}
                             value={closeEnt[d.id] ?? ""} onChange={e => setCloseEnt(p => ({ ...p, [d.id]: e.target.value }))} />
-                          {closing !== null && <span style={{ fontSize: 10, color: TEAL }}>✓{closing}</span>}
+                          {savedTick !== null && <span style={{ fontSize: 10, color: TEAL }}>✓{savedTick}</span>}
                         </div>
-                      ) : <span style={{ fontFamily: "monospace" }}>{closing ?? "—"}</span>}
+                      ) : <span style={{ fontFamily: "monospace" }}>{(soldMode ? savedSold : closing) ?? "—"}</span>}
                     </td>
-                    <td style={{ ...C.td(), fontFamily: "monospace", fontWeight: 700 }}>{sold !== null ? sold : "—"}</td>
+                    <td style={{ ...C.td(), fontFamily: "monospace", fontWeight: 700, color: liveDerived !== null ? TEAL : TXT }}>{derived !== null ? derived : "—"}</td>
                   </tr>
                 );
               })}</tbody>
@@ -994,8 +998,24 @@ function DailyLogTab({ barId, role, userId, displayName }) {
           </div>
           {canLog && !isLocked && (
             <button onClick={saveClosing} disabled={saving} style={{ ...C.btn("primary"), marginBottom: 14, opacity: saving ? 0.6 : 1 }}>
-              {saving ? "Saving..." : "Save Closing Stock"}
+              {saving ? "Saving..." : soldMode ? "Save Sales" : "Save Closing Stock"}
             </button>
+          )}
+          {restockFor && (
+            <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+              <div style={{ background: SURFACE, borderRadius: "20px 20px 0 0", padding: "22px 20px 34px", width: "100%", maxWidth: 480 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>📦 Restock — {restockFor.name}</div>
+                <div style={{ fontSize: 12, color: MUTED, marginBottom: 14 }}>
+                  Recorded for {date === today() ? "today" : fmtDate(date)}. Already restocked {date === today() ? "today" : "this day"}: {getRestocked(restockFor.id, date) > 0 ? "+" + getRestocked(restockFor.id, date) : "none"}.
+                </div>
+                <label style={C.lbl}>Quantity Added</label>
+                <input style={{ ...C.inp, marginBottom: 14 }} type="number" autoFocus placeholder="0" value={restockQty} onChange={e => setRestockQty(e.target.value)} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...C.btn("amber"), flex: 1 }} onClick={saveRestock}>Add Restock</button>
+                  <button style={{ ...C.btn("ghost"), flex: 1 }} onClick={() => { setRestockFor(null); setRestockQty(""); }}>Cancel</button>
+                </div>
+              </div>
+            </div>
           )}
           {showCash && (
             <div style={{ ...C.card, border: "1.5px solid " + OK, marginBottom: 14 }}>
@@ -1163,14 +1183,30 @@ function ExpensesTab({ barId, role, userId }) {
       )}
       {expenses.length === 0 ? <div style={C.empty}>No expenses recorded yet.</div> : (
         <>
-          {expenses.map(e => (
-            <div key={e.id} style={C.card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div><div style={{ fontWeight: 600 }}>{e.description}</div><div style={{ display: "flex", gap: 6, marginTop: 4 }}><span style={C.tag(TEAL)}>{e.category}</span><span style={{ fontSize: 11, color: MUTED }}>{e.expense_date}</span></div></div>
-                <div style={{ fontFamily: "monospace", fontWeight: 700, color: ERR, fontSize: 14 }}>{fmt(e.amount)}</div>
+          {[...new Set(expenses.map(e => e.expense_date))].sort().reverse().map(d => {
+            const dayExp = expenses.filter(e => e.expense_date === d);
+            const dayTotal = dayExp.reduce((sum, e) => sum + Number(e.amount), 0);
+            const label = d === today() ? "Today" : d === new Date(Date.now() - 86400000).toISOString().slice(0, 10) ? "Yesterday" : fmtDate(d);
+            return (
+              <div key={d} style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, padding: "0 2px" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: MUTED }}>{label}</span>
+                  <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: ERR }}>{fmt(dayTotal)}</span>
+                </div>
+                <div style={{ background: SURFACE, borderRadius: 14, boxShadow: SHADOW, overflow: "hidden" }}>
+                  {dayExp.map((e, i) => (
+                    <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 14px", borderBottom: i < dayExp.length - 1 ? "1px solid " + BORDER : "none" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{e.description}</div>
+                        <span style={{ ...C.tag(TEAL), marginTop: 4, display: "inline-block" }}>{e.category}</span>
+                      </div>
+                      <div style={{ fontFamily: "monospace", fontWeight: 700, color: ERR, fontSize: 14 }}>{fmt(e.amount)}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div style={{ ...C.card, borderLeft: "4px solid " + ERR }}>
             <div style={C.row}><span style={{ fontWeight: 700 }}>Total Expenses</span><span style={C.sval(ERR)}>{fmt(total)}</span></div>
           </div>
@@ -1721,7 +1757,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
           ];
         }
         return (
-          <div onClick={close} style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={close} style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div onClick={e => e.stopPropagation()} style={{ background: SURFACE, borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, paddingBottom: 24 }}>
               <div style={{ padding: "18px 20px 12px", borderBottom: "1px solid " + BORDER }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{m.display_name}</div>
@@ -1748,6 +1784,11 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
               When a day is closed automatically, Managers and Admins can correct its figures for this long.
             </div>
             <EditWindowPicker barId={barId} />
+            <div style={{ fontWeight: 600, fontSize: 14, marginTop: 16, marginBottom: 4 }}>Daily log method</div>
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 12, lineHeight: 1.5 }}>
+              Count stock: staff count what is left on the shelf (recommended — catches missing bottles). Enter sales: staff type how many were sold and the app derives the shelf count.
+            </div>
+            <LogModePicker barId={barId} />
           </div>
 
           <div style={C.sec}>Invite Manager <div style={C.line} /></div>
@@ -1826,13 +1867,45 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
 
 
 
+
+// ── Log Mode Picker ───────────────────────────────────────────────────────────
+function LogModePicker({ barId }) {
+  const [mode, setMode] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from("bars").select("log_mode").eq("id", barId).single()
+      .then(({ data }) => setMode(data?.log_mode || "count"));
+  }, [barId]);
+
+  async function pick(m) {
+    setSaving(true);
+    const { error } = await supabase.from("bars").update({ log_mode: m }).eq("id", barId);
+    if (error) alert("Could not save: " + errMsg(error));
+    else setMode(m);
+    setSaving(false);
+  }
+
+  if (mode === null) return <div style={{ fontSize: 12, color: MUTED }}>Loading...</div>;
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      {[["count", "Count stock"], ["sold", "Enter sales"]].map(([m, label]) => (
+        <button key={m} onClick={() => pick(m)} disabled={saving}
+          style={{ flex: 1, padding: "12px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", border: "1.5px solid " + (mode === m ? TEAL : BORDER), background: mode === m ? TEAL + "14" : "transparent", color: mode === m ? TEAL : MUTED }}>
+          {label}{mode === m ? " ✓" : ""}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Edit Window Picker ────────────────────────────────────────────────────────
 function EditWindowPicker({ barId }) {
   const [hours, setHours] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("bars").select("edit_window_hours").eq("id", barId).single()
+    supabase.from("bars").select("edit_window_hours, log_mode").eq("id", barId).single()
       .then(({ data }) => setHours(data?.edit_window_hours || 24));
   }, [barId]);
 
@@ -1986,7 +2059,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
   return (
     <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ background: HDR, borderBottom: "1px solid " + AMBER + "44", padding: "20px 18px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: HDR, padding: "20px 18px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 40, height: 40, objectFit: "contain" }} />
           <div>
@@ -2074,7 +2147,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
 
         {/* Create bar modal */}
         {showCreate && (
-          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div style={{ background: SURFACE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Create a Bar</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>You will be assigned as Admin</div>
@@ -2093,7 +2166,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
 
         {/* Join bar modal */}
         {showJoin && (
-          <div style={{ position: "fixed", inset: 0, background: "#000000B3", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ position: "fixed", inset: 0, background: "#00000088", zIndex: 80, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div style={{ background: SURFACE, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480 }}>
               <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join a Bar</div>
               <div style={{ fontSize: 13, color: MUTED, marginBottom: 20 }}>Enter the bar code to send a join request</div>
@@ -2200,8 +2273,8 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, minHeight: "100vh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", paddingBottom: 72 }}>
-      <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap'); @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} .tabwrap{animation:fadeUp 0.22s ease} button{-webkit-tap-highlight-color:transparent;transition:transform 0.08s ease,opacity 0.15s ease} button:active{transform:scale(0.97)} input,select{transition:border-color 0.15s ease,box-shadow 0.15s ease;color-scheme:dark} input:focus{border-color:" + AMBER + " !important;box-shadow:0 0 0 3px " + AMBER + "22} input::placeholder{color:" + MUTED + "99} input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none} ::selection{background:" + AMBER + "44}"}</style>
-      <div style={{ padding: "13px 18px 11px", background: HDR, borderBottom: "1px solid " + AMBER + "33", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
+      <style>{"@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap'); @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} .tabwrap{animation:fadeUp 0.22s ease} button{-webkit-tap-highlight-color:transparent;transition:transform 0.08s ease,opacity 0.15s ease} button:active{transform:scale(0.97)} input,select{transition:border-color 0.15s ease,box-shadow 0.15s ease} input:focus{border-color:" + TEAL + " !important;box-shadow:0 0 0 3px " + TEAL + "22} input::placeholder{color:" + MUTED + "99} input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}"}</style>
+      <div style={{ padding: "13px 18px 11px", background: SURFACE, borderBottom: "1px solid " + BORDER, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={handleBackToHome} style={{ background: "none", border: "none", cursor: "pointer", color: TEAL, fontSize: 20, padding: 0, lineHeight: 1 }}>‹</button>
           <div>
@@ -2222,11 +2295,11 @@ export default function App() {
         {tab === 4 && <SettingsTab barId={barId} userId={user?.id} role={role} displayName={displayName} barName={bar?.name} barCode={barCode} onUpdate={handleUpdate} onLogout={handleLogout} />}
       </div>
 
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#111B20", borderTop: "1px solid " + BORDER, display: "flex", zIndex: 50, boxShadow: "0 -4px 16px rgba(0,0,0,0.5)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: SURFACE, borderTop: "1px solid " + BORDER, display: "flex", zIndex: 50, boxShadow: "0 -2px 10px rgba(0,0,0,0.06)" }}>
         {NAV.map((n, i) => (
-          <button key={n.label} onClick={() => setTab(i)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, borderTop: tab === i ? "2px solid " + AMBER : "2px solid transparent", marginTop: -1 }}>
-            <span style={{ fontSize: 18, filter: tab === i ? "drop-shadow(0 0 6px " + AMBER + "AA)" : "grayscale(1) opacity(0.35)", transition: "filter 0.2s ease" }}>{n.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: tab === i ? AMBER : MUTED, textShadow: tab === i ? "0 0 8px " + AMBER + "66" : "none" }}>{n.label}</span>
+          <button key={n.label} onClick={() => setTab(i)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, borderTop: tab === i ? "2px solid " + TEAL : "2px solid transparent", marginTop: -1 }}>
+            <span style={{ fontSize: 18, filter: tab === i ? "none" : "grayscale(1) opacity(0.4)" }}>{n.icon}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: tab === i ? TEAL : MUTED }}>{n.label}</span>
           </button>
         ))}
       </div>
