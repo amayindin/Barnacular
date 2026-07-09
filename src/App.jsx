@@ -526,6 +526,7 @@ function StockTab({ barId, role, userId, displayName }) {
   const [editErr, setEditErr] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [showLow, setShowLow] = useState(false);
   const [err, setErr] = useState("");
   const [now, setNow] = useState(new Date());
 
@@ -654,14 +655,22 @@ function StockTab({ barId, role, userId, displayName }) {
       )}
 
       {lowItems.length > 0 && (
-        <div style={{ background: ERR + "14", border: "1px solid " + ERR + "33", borderRadius: 14, padding: "13px 15px", marginBottom: 14 }}>
-          <div style={{ fontWeight: 700, color: ERR, fontSize: 13, marginBottom: 8 }}>⚠ Low Stock Alert</div>
-          {lowItems.map(d => (
-            <div key={d.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-              <span>{d.name}</span>
-              <span style={{ color: ERR, fontWeight: 700 }}>{d.quantity} left (min {d.min_quantity})</span>
+        <div style={{ background: ERR + "14", border: "1px solid " + ERR + "33", borderRadius: 14, marginBottom: 14, overflow: "hidden" }}>
+          <button onClick={() => setShowLow(v => !v)}
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "13px 15px", background: "none", border: "none", cursor: "pointer" }}>
+            <span style={{ fontWeight: 700, color: ERR, fontSize: 13 }}>Low Stock Alert ({lowItems.length})</span>
+            <span style={{ color: ERR, fontSize: 13 }}>{showLow ? "▲" : "▼"}</span>
+          </button>
+          {showLow && (
+            <div style={{ padding: "0 15px 13px" }}>
+              {lowItems.map(d => (
+                <div key={d.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                  <span>{d.name}</span>
+                  <span style={{ color: ERR, fontWeight: 700 }}>{d.quantity} left (min {d.min_quantity})</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -1226,7 +1235,7 @@ function DailyLogTab({ barId, role, userId, displayName }) {
                 )}
                 {canLog && dayAutoClosed(d) && withinEditWindow(d) && (
                   <button onClick={() => { setDate(d); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                    style={{ ...C.btn("amber"), marginTop: 10 }}>✎ Correct This Day's Figures</button>
+                    style={{ ...C.btn("amber"), marginTop: 10 }}>Correct This Day's Figures</button>
                 )}
               </>
             )}
@@ -1836,9 +1845,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
       )}
 
       {section === null && (() => {
-        const Row = ({ icon, label, sub, onClick, badge, danger }) => (
+        const Row = ({ label, sub, onClick, badge, danger }) => (
           <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 13, width: "100%", padding: "15px 16px", background: "none", border: "none", borderBottom: "1px solid " + BORDER, cursor: "pointer", textAlign: "left" }}>
-            <span style={{ fontSize: 19, width: 26, textAlign: "center" }}>{icon}</span>
             <span style={{ flex: 1 }}>
               <span style={{ display: "block", fontWeight: 600, fontSize: 15, color: danger ? ERR : TXT }}>{label}</span>
               {sub && <span style={{ display: "block", fontSize: 11, color: MUTED, marginTop: 2 }}>{sub}</span>}
@@ -1856,19 +1864,19 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         return (
           <>
             <Group title="Bar">
-              <Row icon="🏷" label="Bar Profile" sub="Your name and the bar's name" onClick={() => setSection("profile")} />
-              <Row icon="🔑" label="Bar Code & Invites" sub="Share access with your team" onClick={() => setSection("invites")} />
-              <Row icon="👥" label="Team" sub="Members, roles and join requests" badge={role === "supervisor" ? requests.length : 0} onClick={() => setSection("team")} />
+              <Row label="Bar Profile" sub="Your name and the bar's name" onClick={() => setSection("profile")} />
+              <Row label="Bar Code & Invites" sub="Share access with your team" onClick={() => setSection("invites")} />
+              <Row label="Team" sub="Members, roles and join requests" badge={role === "supervisor" ? requests.length : 0} onClick={() => setSection("team")} />
             </Group>
             <Group title="Operations">
-              {role === "supervisor" && <Row icon="📅" label="Day Cycle" sub="Log method and correction window" onClick={() => setSection("daycycle")} />}
-              {(role === "supervisor" || role === "manager") && <Row icon="📦" label="Archived Drinks" sub={archived.length + " archived"} onClick={() => setSection("archived")} />}
-              <Row icon="👤" label="Your Role" sub={"You are " + (ROLE_LABEL[role] || role) + " in this bar"} onClick={() => setSection("role")} />
+              {role === "supervisor" && <Row label="Day Cycle" sub="Log method and correction window" onClick={() => setSection("daycycle")} />}
+              {(role === "supervisor" || role === "manager") && <Row label="Archived Drinks" sub={archived.length + " archived"} onClick={() => setSection("archived")} />}
+              <Row label="Your Role" sub={"You are " + (ROLE_LABEL[role] || role) + " in this bar"} onClick={() => setSection("role")} />
             </Group>
             <Group title="Account & Data">
-              {role === "supervisor" && <Row icon="⬇" label="Export Bar Data" sub="Download everything as a file" onClick={exportData} />}
-              <Row icon="🚪" label="Sign Out" onClick={onLogout} />
-              {role === "supervisor" && <Row icon="🗑" label="Delete Bar" sub="Permanent — cannot be undone" danger onClick={() => setSection("danger")} />}
+              {role === "supervisor" && <Row label="Export Bar Data" sub="Download everything as a file" onClick={exportData} />}
+              <Row label="Sign Out" onClick={onLogout} />
+              {role === "supervisor" && <Row label="Delete Bar" sub="Permanent — cannot be undone" danger onClick={() => setSection("danger")} />}
             </Group>
           </>
         );
@@ -1912,7 +1920,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
           const text = "Join my bar \"" + barName + "\" on Barnakular! 🍺\n\n1. Open " + window.location.origin + "\n2. Sign up\n3. Tap Join Bar and enter code: " + barCode;
           if (navigator.share) navigator.share({ text }).catch(() => {});
           else window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
-        }} style={C.btn("ok")}>💬 Share Invite via WhatsApp</button>
+        }} style={C.btn("ok")}>Share Invite via WhatsApp</button>
       </div>
 
       </>)}
