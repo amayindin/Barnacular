@@ -1651,6 +1651,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
   const [deleting, setDeleting] = useState(false);
   const [menuMember, setMenuMember] = useState(null);
   const [menuStage, setMenuStage] = useState("root");
+  const [section, setSection] = useState(null);
 
   async function loadData() {
     const [{ data: profs }, { data: reqs }, { data: promos }] = await Promise.all([
@@ -1834,6 +1835,52 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </div>
       )}
 
+      {section === null && (() => {
+        const Row = ({ icon, label, sub, onClick, badge, danger }) => (
+          <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 13, width: "100%", padding: "15px 16px", background: "none", border: "none", borderBottom: "1px solid " + BORDER, cursor: "pointer", textAlign: "left" }}>
+            <span style={{ fontSize: 19, width: 26, textAlign: "center" }}>{icon}</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontWeight: 600, fontSize: 15, color: danger ? ERR : TXT }}>{label}</span>
+              {sub && <span style={{ display: "block", fontSize: 11, color: MUTED, marginTop: 2 }}>{sub}</span>}
+            </span>
+            {badge > 0 && <span style={{ minWidth: 20, height: 20, borderRadius: 10, background: ERR, color: WHITE, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{badge}</span>}
+            <span style={{ color: MUTED, fontSize: 17 }}>›</span>
+          </button>
+        );
+        const Group = ({ title, children }) => (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: MUTED, marginBottom: 8, paddingLeft: 2 }}>{title}</div>
+            <div style={{ background: SURFACE, borderRadius: 16, boxShadow: SHADOW, overflow: "hidden" }}>{children}</div>
+          </div>
+        );
+        return (
+          <>
+            <Group title="Bar">
+              <Row icon="🏷" label="Bar Profile" sub="Your name and the bar's name" onClick={() => setSection("profile")} />
+              <Row icon="🔑" label="Bar Code & Invites" sub="Share access with your team" onClick={() => setSection("invites")} />
+              <Row icon="👥" label="Team" sub="Members, roles and join requests" badge={role === "supervisor" ? requests.length : 0} onClick={() => setSection("team")} />
+            </Group>
+            <Group title="Operations">
+              {role === "supervisor" && <Row icon="📅" label="Day Cycle" sub="Log method and correction window" onClick={() => setSection("daycycle")} />}
+              {(role === "supervisor" || role === "manager") && <Row icon="📦" label="Archived Drinks" sub={archived.length + " archived"} onClick={() => setSection("archived")} />}
+              <Row icon="👤" label="Your Role" sub={"You are " + (ROLE_LABEL[role] || role) + " in this bar"} onClick={() => setSection("role")} />
+            </Group>
+            <Group title="Account & Data">
+              {role === "supervisor" && <Row icon="⬇" label="Export Bar Data" sub="Download everything as a file" onClick={exportData} />}
+              <Row icon="🚪" label="Sign Out" onClick={onLogout} />
+              {role === "supervisor" && <Row icon="🗑" label="Delete Bar" sub="Permanent — cannot be undone" danger onClick={() => setSection("danger")} />}
+            </Group>
+          </>
+        );
+      })()}
+
+      {section !== null && (
+        <button onClick={() => setSection(null)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", color: TEAL, fontWeight: 700, fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0 }}>
+          ← Settings
+        </button>
+      )}
+
+      {section === "profile" && (<>
       <div style={C.sec}>Profile <div style={C.line} /></div>
       <div style={C.card}>
         <div style={{ marginBottom: 12 }}>
@@ -1851,6 +1898,9 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         <button style={C.btn("primary")} onClick={saveProfile}>Save Changes</button>
       </div>
 
+      </>)}
+
+      {section === "invites" && (<>
       <div style={C.sec}>Bar Code <div style={C.line} /></div>
       <div style={C.card}>
         <div style={{ fontSize: 13, color: MUTED, marginBottom: 10 }}>Share this code with anyone who wants to join this bar as a Viewer.</div>
@@ -1865,7 +1915,9 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         }} style={C.btn("ok")}>💬 Share Invite via WhatsApp</button>
       </div>
 
-      {role === "supervisor" && requests.length > 0 && (
+      </>)}
+
+      {section === "team" && role === "supervisor" && requests.length > 0 && (
         <>
           <div style={C.sec}>Join Requests ({requests.length}) <div style={C.line} /></div>
           {requests.map(req => (
@@ -1881,6 +1933,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </>
       )}
 
+      {section === "role" && (<>
       <div style={C.sec}>Your Role <div style={C.line} /></div>
       <div style={C.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -1893,6 +1946,9 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </div>
       </div>
 
+      </>)}
+
+      {section === "team" && (<>
       <div style={C.sec}>Team Members <div style={C.line} /></div>
       <div style={C.card}>
         <div style={{ fontSize: 12, color: MUTED, marginBottom: 12 }}>
@@ -1973,7 +2029,9 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         );
       })()}
 
-      {role === "supervisor" && (
+      </>)}
+
+      {section === "daycycle" && role === "supervisor" && (
         <>
           <div style={C.sec}>Day Cycle <div style={C.line} /></div>
           <div style={C.card}>
@@ -1989,6 +2047,11 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
             <LogModePicker barId={barId} />
           </div>
 
+        </>
+      )}
+
+      {section === "invites" && role === "supervisor" && (
+        <>
           <div style={C.sec}>Invite Manager <div style={C.line} /></div>
           <div style={C.card}>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 13 }}>Generate a one-time link to invite someone as Manager.</div>
@@ -2005,7 +2068,7 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </>
       )}
 
-      {(role === "supervisor" || role === "manager") && (
+      {section === "archived" && (role === "supervisor" || role === "manager") && (
         <>
           <div style={C.sec}>Archived Drinks ({archived.length}) <div style={C.line} /></div>
           <div style={C.card}>
@@ -2034,14 +2097,8 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </>
       )}
 
-      {role === "supervisor" && (
+      {section === "danger" && role === "supervisor" && (
         <>
-          <div style={C.sec}>Your Data <div style={C.line} /></div>
-          <div style={C.card}>
-            <div style={{ fontSize: 13, color: MUTED, marginBottom: 13, lineHeight: 1.5 }}>Your bar's data belongs to you. Download a complete copy — drinks, logs, restocks, expenses, cash records, and team — as a file you can keep or open in a spreadsheet.</div>
-            <button onClick={exportData} style={C.btn("secondary")}>⬇ Export All Bar Data</button>
-          </div>
-
           <div style={{ ...C.sec, color: ERR }}>Danger Zone <div style={{ ...C.line, background: ERR + "33" }} /></div>
           <div style={{ ...C.card, border: "1.5px solid " + ERR + "44" }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: ERR, marginBottom: 6 }}>Delete This Bar</div>
@@ -2060,11 +2117,6 @@ function SettingsTab({ barId, userId, role, displayName, barName, barCode, onUpd
         </>
       )}
 
-      <div style={C.sec}>Account <div style={C.line} /></div>
-      <div style={C.card}>
-        <div style={{ fontSize: 13, color: MUTED, marginBottom: 13 }}>Signing out will return you to the login screen.</div>
-        <button style={C.btn("err")} onClick={onLogout}>Sign Out</button>
-      </div>
     </div>
   );
 }
