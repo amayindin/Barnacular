@@ -177,7 +177,7 @@ function AuthScreen({ onAuth }) {
   if (mode === "landing") return (
     <div style={wrap}>
       <div style={{ marginBottom: 48, textAlign: "center" }}>
-        <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 8 }} />
+        <img src="/logo.png" alt="Barnakular" style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 8 }} />
         <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 46, fontWeight: 400, color: TXT, letterSpacing: -1 }}>Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>Bar Management System</div>
       </div>
@@ -189,7 +189,7 @@ function AuthScreen({ onAuth }) {
   return (
     <div style={wrap}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
-        <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 8 }} />
+        <img src="/logo.png" alt="Barnakular" style={{ width: 100, height: 100, objectFit: "contain", marginBottom: 8 }} />
         <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 36, fontWeight: 400, color: TXT }}>Barnakular</div>
         <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{mode === "login" ? "Welcome back" : "Create your account"}</div>
       </div>
@@ -2325,7 +2325,7 @@ function HomeScreen({ user, onSelectBar, onSignOut }) {
       {/* Header */}
       <div style={{ background: HDR, padding: "20px 18px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src="https://raw.githubusercontent.com/amayindin/Barnacular/main/logo.png" alt="Barnakular" style={{ width: 40, height: 40, objectFit: "contain" }} />
+          <img src="/logo.png" alt="Barnakular" style={{ width: 40, height: 40, objectFit: "contain" }} />
           <div>
             <div style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 22, color: WHITE, fontWeight: 400 }}>Barnakular</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{user.email}</div>
